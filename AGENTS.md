@@ -33,10 +33,10 @@ Todo agente de IA que atua no BookForge **DEVE** seguir rigorosamente estes prin
    - Processe sempre **seção por seção** ou **lotes de 3 a 4 páginas por chamada de ferramenta** usando `write_file` (com `Append: true` para seções subsequentes no mesmo arquivo).
    - Valide a compilação com frequência (`.venv\Scripts\python.exe cli.py build <slug>`) para detectar e corrigir erros imediatamente.
 
-6. **Proteção Rigorosa de Direitos Autorais (`COPYRIGHT_GUARDRAIL`)**
-   - O repositório público no GitHub versiona **apenas o framework, motores, templates, ferramentas CLI, regras de agentes e o livro modelo aberto (`library/exemplo-livro-modelo`)**.
-   - Obras reais, livros comerciais com direitos autorais (`library/cegalla*`, `library/matematica*`, etc.), arquivos originais de entrada (`original/`), entregáveis compilados (`dist/`) e cache de imagens (`intermediate/`) são estritamente mantidos apenas na máquina local.
-   - **NUNCA** utilize `git add -f` para forçar o rastreamento de obras protegidas. Respeite as regras do `.gitignore`.
+6. **Higiene do Repositório (`CLEAN_REPOSITORY`)**
+   - O repositório no Git versiona **apenas o framework, motores, templates, ferramentas CLI, regras de agentes e o livro modelo aberto (`library/exemplo-livro-modelo`)**.
+   - Arquivos originais de entrada (`original/`), entregáveis compilados (`dist/`) e cache de imagens (`intermediate/`) são mantidos apenas na máquina local.
+   - **NUNCA** utilize `git add -f` para forçar o rastreamento de arquivos ignorados. Respeite as regras do `.gitignore`.
 
 7. **Consistência Terminológica (`GLOSSARY_FIRST`)**
    - Antes de traduzir ou revisar capítulos, consulte e alimente `library/<slug>/state/glossary.json` com termos técnicos e decisões de estilo.

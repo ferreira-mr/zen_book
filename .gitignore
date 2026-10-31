@@ -1,5 +1,5 @@
 # ==============================================================================
-# BookForge .gitignore — Proteção de Direitos Autorais e Higiene do Repositório
+# ZenBook / BookForge .gitignore
 # ==============================================================================
 
 # --- Backup Legado ---
@@ -16,11 +16,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-# --- Obras Locais e Conteúdo com Direitos Autorais (Copyright Protection) ---
-# O repositório público no GitHub contém apenas o motor BookForge, scripts,
-# templates reutilizáveis, regras de agentes e o livro modelo de demonstração.
-# Todas as obras reais, transcrições e figuras de livros proprietários
-# permanecem salvas e utilizáveis localmente, mas NUNCA são enviadas ao Git.
+# --- Biblioteca Local de Livros (Workspace) ---
 library/*
 !library/.gitkeep
 !library/exemplo-livro-modelo/

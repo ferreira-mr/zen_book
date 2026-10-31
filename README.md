@@ -7,7 +7,7 @@ O **BookForge** é um ecossistema completo para o ciclo de vida editorial de liv
 3. **Leitura Ergonômica Especializada para Amazon Kindle**: geração de PDF Kindle nativo fluido (10.5pt, proporção 3:4, fluxo contínuo) e EPUB 3 semântico refluxável com Bookerly CSS, eliminando o problema de fontes microscópicas em telas E-Ink.
 4. **Repositório Central Reutilizável de Templates (`core/templates/`)**: design system consolidado em **LaTeX** e **Typst**, eliminando redundâncias e padronizando 4 formatos canônicos de publicação.
 5. **Acervo Encapsulado por Obra (`library/<book-slug>/`)**: cada livro possui seu próprio ciclo de vida isolado (arquivo original, figuras, fontes, estados e distribuições finais).
-6. **Proteção Rigorosa de Direitos Autorais**: o repositório Git público versiona exclusivamente o código do motor, ferramentas e templates; todas as obras proprietárias e scans pesados permanecem protegidos na sua máquina local.
+6. **Arquitetura Modular e Automação**: linha de comando intuitiva para renderização, compilação de múltiplos formatos e monitoramento em tempo real.
 
 ---
 
@@ -141,7 +141,7 @@ books/
 ├── uv.lock                        # Lockfile determinístico de pacotes
 ├── AGENTS.md                      # Agent Harness para agentes Gemini Flash
 ├── README.md                      # Esta documentação mestre
-├── .gitignore                     # Proteção de direitos autorais e isolamento de saídas
+├── .gitignore                     # Filtros para ignorar saídas compiladas e temporários
 ├── .agents/                       # Regras e habilidades para agentes de IA
 │   ├── rules/
 │   │   ├── editorial-design.md    # Regras de design editorial (LaTeX e Typst)
@@ -160,8 +160,8 @@ books/
 │   └── state_manager.py           # Gestão unificada de estado e manifesto
 └── library/                       # Obras organizadas (isolamento estrito)
     ├── .gitkeep                   # Mantém a pasta library/ versionada
-    ├── exemplo-livro-modelo/      # Livro modelo sintético (aberto e livre de copyright)
-    └── <obras-locais>/            # Livros proprietários (permanecem 100% locais via .gitignore)
+    ├── exemplo-livro-modelo/      # Livro modelo de demonstração
+    └── <livros-locais>/           # Diretórios locais dos livros em processamento
 ```
 
 ### Estrutura Interna de Cada Livro (`library/<slug>/`):
@@ -183,32 +183,6 @@ library/<book-slug>/
 │   ├── PROGRESS.md                # Dashboard legível de progresso
 │   └── glossary.json              # Glossário terminológico da obra
 └── dist/                          # Entregáveis finais compilados (Screen, Print, Kindle)
-```
-
----
-
-## 🔒 Proteção de Direitos Autorais e Publicação no GitHub
-
-O BookForge foi desenhado com arquitetura de isolamento para publicação segura em repositórios abertos ou privados no GitHub:
-
-1. **O que Sobe para o GitHub:**
-   - Todo o código-fonte da plataforma (`core/`, `cli.py`, `pyproject.toml`).
-   - Todos os templates reutilizáveis (LaTeX, Typst, EPUB CSS).
-   - Documentação, regras de IA e habilidades (`AGENTS.md`, `.agents/`).
-   - O livro modelo de teste (`library/exemplo-livro-modelo/`).
-2. **O que Fica Estritamente Local:**
-   - **Livros Originais de Entrada:** Pastas `original/`, PDFs e EPUBs brutos.
-   - **Livros Compilados de Saída:** Pastas `dist/`, arquivos compilados `.pdf` e `.epub`.
-   - **Obras Protegidas por Direitos Autorais:** Obras proprietárias (`library/cegalla*`, `library/matematica*`, etc.) permanecem na sua máquina local, funcionando perfeitamente com a CLI, mas são ignoradas pelo Git.
-   - **Imagens Intermediárias de Scanner:** Pastas `intermediate/` e caches de OCR.
-
-### Como Publicar no seu GitHub:
-```powershell
-# 1. Vincule ao seu repositório remoto no GitHub
-git remote add origin https://github.com/<SEU-USUARIO>/<SEU-REPOSITORIO>.git
-
-# 2. Envie o branch principal limpo
-git push -u origin main
 ```
 
 ---
