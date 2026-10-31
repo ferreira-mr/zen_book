@@ -1,0 +1,15 @@
+{
+  "slug": "exemplo-livro-modelo",
+  "title": "Exemplo de Livro Modelo",
+  "author": "Equipe BookForge",
+  "total_pages": 1,
+  "completed_pages": 1,
+  "pages": [
+    {
+      "page_num": 1,
+      "status": "completed",
+      "file": "source/pages/page_0001.typ"
+    }
+  ],
+  "chapters": []
+}

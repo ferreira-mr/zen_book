@@ -1,0 +1,155 @@
+/* ==============================================================================
+   BookForge Core: kindle-style.css
+   Estilo Semântico para Edições Refluxáveis EPUB 3 Amazon Kindle
+   ============================================================================== */
+
+@namespace "http://www.w3.org/1999/xhtml";
+
+body {
+    margin: 4% 5%;
+    font-family: "Bookerly", "Georgia", "Times New Roman", serif;
+    font-size: 1em;
+    line-height: 1.45;
+    text-align: justify;
+    color: #111111;
+    background-color: #ffffff;
+}
+
+h1.chapter-title {
+    font-size: 1.6em;
+    font-weight: bold;
+    text-align: left;
+    margin-top: 1.8em;
+    margin-bottom: 0.8em;
+    page-break-before: always;
+    break-before: page;
+}
+
+h2.section-title {
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-top: 1.4em;
+    margin-bottom: 0.5em;
+}
+
+h3.subsection-title {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-top: 1.1em;
+    margin-bottom: 0.4em;
+}
+
+h4.subsubsection-title {
+    font-size: 1.0em;
+    font-weight: bold;
+    margin-top: 0.9em;
+    margin-bottom: 0.3em;
+}
+
+p {
+    margin-top: 0;
+    margin-bottom: 0.6em;
+    text-indent: 1.2em;
+}
+
+p.first-after-heading, h1 + p, h2 + p, h3 + p, h4 + p {
+    text-indent: 0;
+}
+
+aside.kindle-box {
+    margin: 1.2em 0;
+    padding: 0.8em 1em;
+    border-left: 3.5pt solid #222222;
+    background-color: #f7f7f7;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+aside.kindle-box .box-title {
+    margin-top: 0;
+    margin-bottom: 0.5em;
+    font-size: 1.05em;
+    font-weight: bold;
+    color: #000000;
+}
+
+div.kindle-sample {
+    margin: 1em 0;
+    padding: 0.7em 0.9em;
+    border-left: 3px solid #555555;
+    background-color: #fafafa;
+}
+
+div.kindle-analysis {
+    margin: 0.8em 0;
+    padding: 0.6em 0.9em;
+    border-left: 2px solid #777777;
+    font-style: italic;
+    font-size: 0.95em;
+}
+
+ul.kindle-list, ol.kindle-list {
+    margin: 0.6em 0 0.8em 1.5em;
+    padding-left: 0;
+}
+
+li {
+    margin-bottom: 0.35em;
+}
+
+figure.kindle-figure, div.figure-container {
+    margin: 1.4em 0;
+    text-align: center;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+img.kindle-img {
+    max-width: 98%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+figcaption {
+    font-size: 0.85em;
+    margin-top: 0.4em;
+    color: #333333;
+    font-family: sans-serif;
+}
+
+div.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    margin: 1.2em 0;
+}
+
+table.kindle-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+table.kindle-table th, table.kindle-table td {
+    border: 1px solid #cccccc;
+    padding: 6px 8px;
+    text-align: left;
+}
+
+table.kindle-table th {
+    background-color: #eeeeee;
+    font-weight: bold;
+}
+
+code, pre {
+    font-family: "Courier New", monospace;
+    font-size: 0.9em;
+    background-color: #f4f4f4;
+}
+
+pre {
+    padding: 0.8em;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+}

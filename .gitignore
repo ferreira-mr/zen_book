@@ -1,0 +1,82 @@
+# ==============================================================================
+# BookForge .gitignore — Proteção de Direitos Autorais e Higiene do Repositório
+# ==============================================================================
+
+# --- Backup Legado ---
+archive_legacy/
+
+# --- Ambiente Virtual e Dependências Python ---
+.venv/
+env/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# --- Obras Locais e Conteúdo com Direitos Autorais (Copyright Protection) ---
+# O repositório público no GitHub contém apenas o motor BookForge, scripts,
+# templates reutilizáveis, regras de agentes e o livro modelo de demonstração.
+# Todas as obras reais, transcrições e figuras de livros proprietários
+# permanecem salvas e utilizáveis localmente, mas NUNCA são enviadas ao Git.
+library/*
+!library/.gitkeep
+!library/exemplo-livro-modelo/
+!library/exemplo-livro-modelo/**
+
+# --- Arquivos Originais Pesados (Scans, PDFs brutos, Livros de Entrada) ---
+original/
+**/original/*
+!**/original/.gitkeep
+*.djvu
+
+# --- Arquivos Intermediários e Cache de Imagens ---
+intermediate/
+**/intermediate/*
+!**/intermediate/.gitkeep
+**/page_images/*
+**/ocr_raw/*
+_epub_staging/
+**/_epub_staging/
+
+# --- Entregáveis e Saídas Finais (PDFs, EPUBs compilados - Livros de Saída) ---
+dist/
+output/
+**/dist/*
+!**/dist/.gitkeep
+**/output/*
+!**/output/.gitkeep
+*.pdf
+*.epub
+*.mobi
+*.azw3
+
+# --- LaTeX / Tectonic / Typst Build Artifacts ---
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.xdv
+*.bbl
+*.blg
+*.idx
+*.ilg
+*.ind
+_kindle_build_temp.typ
+**/*_temp.typ
+test_*.typ
+**/source/assets
+
+# --- Sistema Operacional e IDEs ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~

@@ -1,0 +1,228 @@
+/* ==========================================================================
+   Screen-First Digital Editorial Stylesheet (UI/UX para Leitura de Livros)
+   Otimizado para conforto visual em monitores, tablets e geração de PDF Digital
+   ========================================================================== */
+
+:root {
+  --bg-page: #faf8f5;
+  --bg-surface: #f2efe9;
+  --bg-code: #1e222a;
+  --text-primary: #222428;
+  --text-secondary: #555860;
+  --accent-primary: #1d4ed8;
+  --border-subtle: #e2ddd5;
+  --callout-note-bg: #eff6ff;
+  --callout-note-border: #3b82f6;
+  --callout-tip-bg: #f0fdf4;
+  --callout-tip-border: #22c55e;
+  --callout-warn-bg: #fffbeb;
+  --callout-warn-border: #f59e0b;
+  --measure: 68ch;
+  --font-serif: "Charter", "Georgia", "Cambria", "Times New Roman", serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page: #141619;
+    --bg-surface: #1d2025;
+    --bg-code: #0f1115;
+    --text-primary: #e4e6eb;
+    --text-secondary: #9ca3af;
+    --accent-primary: #60a5fa;
+    --border-subtle: #2e323b;
+    --callout-note-bg: rgba(59, 130, 246, 0.12);
+    --callout-tip-bg: rgba(34, 197, 94, 0.12);
+    --callout-warn-bg: rgba(245, 158, 11, 0.12);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 18px;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 3rem 1.5rem 6rem;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+main, .book-container {
+  max-width: var(--measure);
+  margin: 0 auto;
+}
+
+/* Hierarquia Tipográfica */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  line-height: 1.28;
+  letter-spacing: -0.015em;
+  margin-top: 2.5em;
+  margin-bottom: 0.75em;
+  page-break-after: avoid;
+}
+
+h1 {
+  font-size: 2.1rem;
+  font-weight: 800;
+  border-bottom: 2px solid var(--border-subtle);
+  padding-bottom: 0.5rem;
+  margin-top: 3.5rem;
+  page-break-before: always;
+}
+
+h2 {
+  font-size: 1.55rem;
+  font-weight: 700;
+}
+
+h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+p {
+  margin-top: 0;
+  margin-bottom: 1.25em;
+  orphans: 3;
+  widows: 3;
+}
+
+/* Listas */
+ul, ol {
+  margin-top: 0;
+  margin-bottom: 1.35em;
+  padding-left: 1.6em;
+}
+
+li {
+  margin-bottom: 0.45em;
+}
+
+/* Callouts / Sidebars Adaptados para Tela */
+blockquote {
+  margin: 1.75em 0;
+  padding: 1.1rem 1.35rem;
+  background-color: var(--bg-surface);
+  border-left: 4px solid var(--accent-primary);
+  border-radius: 0 8px 8px 0;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  page-break-inside: avoid;
+}
+
+blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Blocos de Código */
+pre {
+  background-color: var(--bg-code);
+  color: #f8f8f2;
+  padding: 1.15rem 1.35rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  margin: 1.6em 0;
+  page-break-inside: avoid;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background-color: var(--bg-surface);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Tabelas Responsivas e Íntegras */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.85em 0;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  page-break-inside: avoid;
+}
+
+th, td {
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background-color: var(--bg-surface);
+  font-weight: 600;
+}
+
+/* Figuras e Diagramas */
+figure, p > img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 2rem auto 0.6rem;
+  border-radius: 6px;
+  page-break-inside: avoid;
+}
+
+figcaption, img + em {
+  display: block;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.75rem;
+}
+
+/* Ajustes para Impressão A4 e PDF Digital (Sem cabeçalhos; apenas página no canto inferior direito) */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 25mm 22mm 25mm 28mm;
+    @top-left { content: none; }
+    @top-center { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-center { content: none; }
+    @bottom-right {
+      content: counter(page);
+      font-family: var(--font-sans);
+      font-size: 9.5pt;
+      color: #1a1a1a;
+    }
+  }
+  body {
+    background: #ffffff;
+    color: #000000;
+    padding: 0;
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+  main, .book-container {
+    max-width: 100%;
+  }
+}

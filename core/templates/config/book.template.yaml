@@ -1,0 +1,12 @@
+# Metadados do Livro no BookForge
+slug: "nome-do-livro"
+title: "Título Completo da Obra"
+author: "Nome do Autor"
+engine: "typst" # ou "latex"
+mode: "transcribe-image" # "transcribe-image", "translate" ou "remaster"
+original_file: "arquivo-original.pdf"
+language: "pt-BR"
+source_language: "en"
+isbn: ""
+publisher: ""
+edition: "1ª Edição"

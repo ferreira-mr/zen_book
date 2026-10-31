@@ -1,0 +1,117 @@
+% ==============================================================================
+% BookForge Core: environments.tex
+% Ambientes pedagógicos e caixas de destaque padronizadas (tcolorbox)
+% ==============================================================================
+
+% Cores do Design System Editorial
+\definecolor{bfPrimary}{RGB}{24, 76, 120}       % Azul Editorial
+\definecolor{bfSecondary}{RGB}{120, 36, 36}     % Vinho / Bordô
+\definecolor{bfSuccess}{RGB}{34, 112, 60}       % Verde
+\definecolor{bfWarning}{RGB}{170, 90, 10}       % Âmbar
+\definecolor{bfDark}{RGB}{30, 30, 30}           % Cinza Escuro
+\definecolor{bfLightBg}{RGB}{248, 250, 252}     % Fundo Neutro Suave
+\definecolor{bfCreamBg}{RGB}{252, 250, 245}     % Fundo Creme Suave
+
+% Caixa Genérica com Título
+\newtcolorbox{featurebox}[2][]{
+  enhanced,
+  breakable,
+  colback=bfLightBg,
+  colframe=bfPrimary,
+  coltitle=white,
+  fonttitle=\bfseries\sffamily,
+  title={#2},
+  arc=3mm,
+  boxrule=0.8pt,
+  left=8pt,
+  right=8pt,
+  top=8pt,
+  bottom=8pt,
+  #1
+}
+
+% Objetivos de Aprendizagem
+\newtcolorbox{learningoutcomes}[1][Objetivos de Aprendizagem]{
+  enhanced,
+  breakable,
+  colback=bfLightBg,
+  colframe=bfPrimary!80!black,
+  coltitle=white,
+  fonttitle=\bfseries\sffamily,
+  title={#1},
+  arc=2mm,
+  boxrule=0.8pt,
+  leftrule=4pt,
+  left=10pt,
+  right=8pt,
+  top=8pt,
+  bottom=8pt
+}
+
+% Conceito-Chave
+\newtcolorbox{keyconcept}[1][Conceito-Chave]{
+  enhanced,
+  breakable,
+  colback=bfCreamBg,
+  colframe=bfSecondary,
+  coltitle=white,
+  fonttitle=\bfseries\sffamily,
+  title={#1},
+  arc=2mm,
+  boxrule=0.8pt,
+  left=8pt,
+  right=8pt,
+  top=8pt,
+  bottom=8pt
+}
+
+% Aviso / Atenção / Cuidados
+\newtcolorbox{warningbox}[1][Atenção]{
+  enhanced,
+  breakable,
+  colback=yellow!5!white,
+  colframe=bfWarning,
+  coltitle=white,
+  fonttitle=\bfseries\sffamily,
+  title={#1},
+  arc=2mm,
+  boxrule=0.8pt,
+  left=8pt,
+  right=8pt,
+  top=8pt,
+  bottom=8pt
+}
+
+% Exemplo / Estudo de Caso
+\newtcolorbox{examplebox}[1][Exemplo]{
+  enhanced,
+  breakable,
+  colback=green!4!white,
+  colframe=bfSuccess,
+  coltitle=white,
+  fonttitle=\bfseries\sffamily,
+  title={#1},
+  arc=2mm,
+  boxrule=0.8pt,
+  left=8pt,
+  right=8pt,
+  top=8pt,
+  bottom=8pt
+}
+
+% Nota Informativa
+\newtcolorbox{notebox}[1][Nota]{
+  enhanced,
+  breakable,
+  colback=gray!6!white,
+  colframe=gray!60!black,
+  coltitle=white,
+  fonttitle=\bfseries\sffamily,
+  title={#1},
+  arc=2mm,
+  boxrule=0.8pt,
+  left=8pt,
+  right=8pt,
+  top=8pt,
+  bottom=8pt
+}

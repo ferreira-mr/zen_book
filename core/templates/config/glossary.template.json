@@ -1,0 +1,21 @@
+{
+  "project": "book-slug",
+  "source_language": "en",
+  "target_language": "pt-BR",
+  "terms": {
+    "Learning Outcomes": "Objetivos de Aprendizagem",
+    "Summary": "Resumo",
+    "Key Terms": "Termos-Chave",
+    "Review Questions": "Perguntas de Revisão",
+    "Further Reading": "Leituras Complementares",
+    "References": "Referências",
+    "Figure": "Figura",
+    "Table": "Tabela",
+    "Chapter": "Capítulo"
+  },
+  "style_decisions": {
+    "punctuation": "pt-BR padrão com aspas tipográficas duplas",
+    "code_policy": "Nomes de variáveis, funções e comandos de terminal devem ser preservados sem tradução",
+    "small_caps": "Usar versaletes para nomes de autores em referências e citações"
+  }
+}
