@@ -46,6 +46,7 @@ Siga este procedimento passo a passo sempre que converter um livro escaneado em 
      - Fórmulas matemáticas em `$ ... $`.
      - Tabelas reais com divisórias limpas.
    - Isole ilustrações em `assets/figures/` e insira com `#book-fig("assets/figures/nome.png")`.
+   - **Atenção:** NUNCA force o tamanho da fonte (ex.: `#set text(size: 6pt)`) para espremer conteúdo em 1 página. Deixe o texto fluir livremente.
 2. Compile a página ou lote parcial para validar a ausência de erros de sintaxe Typst:
    ```powershell
    .venv\Scripts\python.exe cli.py build <slug> --target screen
@@ -53,10 +54,14 @@ Siga este procedimento passo a passo sempre que converter um livro escaneado em 
 
 ---
 
-## Passo 4: Geração das Saídas Finais
+## Passo 4: Geração das Saídas Finais (Incluindo Kindle Fluido)
 
-Ao concluir o livro:
+Ao concluir o lote ou o livro:
 ```powershell
+# Compilar edições Kindle ergonômicas (PDF fluido 10.5pt e EPUB 3)
+.venv\Scripts\python.exe cli.py build <slug> --target kindle
+
+# Compilar todos os 4 formatos
 .venv\Scripts\python.exe cli.py build <slug> --target all
 ```
 Isso gera os entregáveis finais leves (5 a 15 MB) substituindo os scans originais pesados (40 a 600 MB).

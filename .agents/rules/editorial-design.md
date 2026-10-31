@@ -41,3 +41,16 @@ Para garantir máxima imersão e eliminar distrações durante a leitura:
 ### Edições para Kindle (`-kindle.pdf` e `-kindle.epub`):
 - Otimizadas para telas monocromáticas E-Ink de 16 níveis de cinza.
 - Borda de caixas com espessura reforçada (3pt à esquerda) e fundos levemente acinzentados (`#F5F5F5`).
+
+---
+
+## 4. Tipografia Ergonômica para Kindle (`ZERO_MICROFONTS`)
+
+1. **Proibição de Microfontes:**
+   - Nunca reduza o tamanho da fonte (ex.: 5pt, 7pt) para espremer uma página inteira de scan original em uma página do Kindle.
+   - O corpo do texto no Kindle PDF deve ser de **10pt a 10.5pt** vetorial nativo.
+2. **Fluxo Natural Contínuo:**
+   - 1 página densa do livro físico (A4/B5) distribui-se naturalmente em **2 a 2.5 páginas Kindle**.
+   - As quebras de página ocorrem organicamente onde a tela termina, sem quebras forçadas a cada página escaneada.
+3. **Métrica Áurea de Caracteres por Linha:**
+   - Margens de 8mm em tela de 105mm x 140mm resultam em ~50 caracteres por linha, garantindo o conforto visual ideal para telas E-Ink de 6" e 6.8".
