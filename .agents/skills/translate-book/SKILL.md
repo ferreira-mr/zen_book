@@ -46,7 +46,8 @@ Após concluir as seções do capítulo, teste a compilação:
 .venv\Scripts\python.exe cli.py build <slug> --target all
 ```
 Verifique se os 4 entregáveis foram gerados em `library/<slug>/dist/`:
-- `<slug>-screen.pdf`
-- `<slug>-print-a4.pdf`
-- `<slug>-kindle.pdf`
-- `<slug>-kindle.epub`
+- `<Título> (<Autor>) - Screen.pdf`
+- `<Título> (<Autor>) - Print-A4.pdf`
+- `<Título> (<Autor>) - Kindle.pdf`
+- `<Título> (<Autor>) - Kindle.epub`
+- `<Título> (<Autor>) - Kindle.azw3`

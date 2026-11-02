@@ -79,7 +79,7 @@ def update_progress_md(book_dir: Path, title: str, author: str = "", engine: str
     dist_dir = Path(book_dir) / "dist"
     if dist_dir.exists():
         for f in sorted(dist_dir.iterdir()):
-            if f.is_file() and f.suffix in [".pdf", ".epub"]:
+            if f.is_file() and f.suffix.lower() in [".pdf", ".epub", ".azw3", ".mobi"]:
                 sz_mb = f.stat().st_size / (1024 * 1024)
                 lines.append(f"- `dist/{f.name}` ({sz_mb:.2f} MB)")
     else:

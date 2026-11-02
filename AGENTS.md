@@ -55,12 +55,14 @@ Todo agente de IA que atua no BookForge **DEVE** seguir rigorosamente estes prin
 
 ---
 
-## 2. Padrões de Diagramação Multi-Formato
+## 2. Padrões de Diagramação Multi-Formato e Nomenclatura
 
-Cada obra no BookForge é compilada a partir de sua fonte modular para até quatro entregáveis especializados:
+Cada obra no BookForge é compilada a partir de sua fonte modular para até quatro entregáveis especializados em `library/<slug>/dist/`, **nomeados obrigatoriamente no padrão canônico com título da obra e autor**:
+`{Título} ({Autor}) - {Edição}.{ext}`
 
-| Elemento no Livro Original | Edição Tela (`-screen.pdf`) | Edição Impressão (`-print-a4.pdf`) | Edição Kindle PDF (`-kindle.pdf`) | Edição Kindle EPUB (`-kindle.epub`) |
+| Elemento no Livro Original | Edição Tela (`*- Screen.pdf`) | Edição Impressão (`*- Print-A4.pdf`) | Edição Kindle PDF (`*- Kindle.pdf`) | Edição Kindle EPUB (`*- Kindle.epub`) |
 | :--- | :--- | :--- | :--- | :--- |
+| **Padrão em `dist/`** | `{Título} ({Autor}) - Screen.pdf` | `{Título} ({Autor}) - Print-A4.pdf` | `{Título} ({Autor}) - Kindle.pdf` | `{Título} ({Autor}) - Kindle.epub` (e `.azw3`) |
 | **Geometria** | `185mm x 260mm` | `210mm x 297mm` (A4) | `105mm x 140mm` (Proporção 3:4) | Refluxável (sem dimensões fixas) |
 | **Margens** | Simétricas (22mm) | Com medianiz (`inner=25, outer=20`) | 8mm laterais / 9mm verticais | Controladas pelo leitor |
 | **Tamanho da Fonte** | `11pt` (Palatino / Georgia) | `10.5pt` (Palatino / Georgia) | `10.5pt` (Alto contraste E-Ink) | Refluxável (Bookerly padrão) |

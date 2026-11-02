@@ -28,17 +28,17 @@ Para garantir máxima imersão e eliminar distrações durante a leitura:
 
 ## 3. Diretrizes de Cores e Contraste
 
-### Edição para Leitura em Telas (`-screen.pdf`):
+### Edição para Leitura em Telas (`*- Screen.pdf`):
 - Fundo: Neutro claro ou creme suave (`#FAF8F5`).
 - Texto: Grafite escuro de alta legibilidade (`#222428`).
 - Links: Azul editorial com alto contraste acessível (`#1D4ED8`).
 
-### Edição para Impressão A4 (`-print-a4.pdf`):
+### Edição para Impressão A4 (`*- Print-A4.pdf`):
 - Fundo: Branco puro do papel.
 - Texto: Preto sólido (`#000000`).
 - Elementos gráficos e quadros: Cinza neutro suave (`gray!6`) com bordas nítidas de 0.7pt.
 
-### Edições para Kindle (`-kindle.pdf` e `-kindle.epub`):
+### Edições para Kindle (`*- Kindle.pdf`, `*- Kindle.epub` e `*- Kindle.azw3`):
 - Otimizadas para telas monocromáticas E-Ink de 16 níveis de cinza.
 - Borda de caixas com espessura reforçada (3pt à esquerda) e fundos levemente acinzentados (`#F5F5F5`).
 

@@ -14,7 +14,7 @@ BOOK_DIR = BASE_DIR / "library" / "fundamentos-de-manutencao-de-software"
 HTML_DIR = BOOK_DIR / "intermediate" / "html_source"
 ASSETS_DIR = BOOK_DIR / "assets" / "figures"
 DIST_DIR = BOOK_DIR / "dist"
-OUTPUT_EPUB = DIST_DIR / "fundamentos-de-manutencao-de-software-kindle.epub"
+OUTPUT_EPUB = DIST_DIR / "Fundamentos de Manutenção de Software (Marco Tulio Valente) - Kindle.epub"
 
 CHAPTER_MAP = [
     ("cap0.html", "Prefácio"),

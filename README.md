@@ -15,12 +15,12 @@ O **BookForge** é um ecossistema completo para o ciclo de vida editorial de liv
 
 Cada projeto dentro do BookForge foi projetado para gerar simultaneamente até quatro entregáveis especializados a partir de uma fonte única:
 
-| Formato | Finalidade | Dimensões | Tipografia & Experiência de Leitura |
+| Formato Padronizado em `dist/` | Finalidade | Dimensões | Tipografia & Experiência de Leitura |
 | :--- | :--- | :--- | :--- |
-| **`*-screen.pdf`** | **Leitura em Telas** (Monitores, Notebooks e Tablets) | `185mm x 260mm` | Coluna única fluida (~66 caracteres por linha), entrelinha 1.22, hiperlinks interativos coloridos e bookmarks hierárquicos completos. Fundo creme suave (`#FAF8F5`). |
-| **`*-print-a4.pdf`** | **Impressão Física** em papel A4 | `210mm x 297mm` (A4) | Margens assimétricas com medianiz para encadernação (`inner=25mm, outer=20mm`), microtipografia ativada, links monocromáticos neutros para tinta. |
-| **`*-kindle.pdf`** | **E-Reader Kindle PDF** (6" e 6.8") | `105mm x 140mm` (Proporção 3:4) | **Tipografia fluida 10.5pt vetorial** sem quebras forçadas de página. Margens de 8mm, topo limpo e rodapé com número de página. 1 página densa original distribui-se organicamente em ~2 páginas Kindle. |
-| **`*-kindle.epub`** | **Kindle Refluxável** (*Send to Kindle*, App e E-Readers) | EPUB 3 Semântico | Texto 100% refluxável, compatível com fonte Bookerly, suporte nativo a ajuste dinâmico de tamanho de fonte, Modo Noturno e dicionário. |
+| **`*{Título} ({Autor}) - Screen.pdf*`** | **Leitura em Telas** (Monitores, Notebooks e Tablets) | `185mm x 260mm` | Coluna única fluida (~66 caracteres por linha), entrelinha 1.22, hiperlinks interativos coloridos e bookmarks hierárquicos completos. Fundo creme suave (`#FAF8F5`). |
+| **`*{Título} ({Autor}) - Print-A4.pdf*`** | **Impressão Física** em papel A4 | `210mm x 297mm` (A4) | Margens assimétricas com medianiz para encadernação (`inner=25mm, outer=20mm`), microtipografia ativada, links monocromáticos neutros para tinta. |
+| **`*{Título} ({Autor}) - Kindle.pdf*`** | **E-Reader Kindle PDF** (6" e 6.8") | `105mm x 140mm` (Proporção 3:4) | **Tipografia fluida 10.5pt vetorial** sem quebras forçadas de página. Margens de 8mm, topo limpo e rodapé com número de página. 1 página densa original distribui-se organicamente em ~2 páginas Kindle. |
+| **`*{Título} ({Autor}) - Kindle.epub*`** / **`*.azw3*`** | **Kindle Refluxável** (*Send to Kindle*, App e E-Readers) | EPUB 3 Semântico / KF8 AZW3 | Texto 100% refluxável, compatível com fonte Bookerly, suporte nativo a ajuste dinâmico de tamanho de fonte, Modo Noturno e dicionário. |
 
 ---
 

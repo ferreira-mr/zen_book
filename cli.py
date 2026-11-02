@@ -52,6 +52,12 @@ def load_book_config(book_dir: Path) -> dict:
             return yaml.safe_load(f) or {}
     return {}
 
+def get_deliverable_name(cfg: dict, slug: str, target: str, ext: str) -> str:
+    title = cfg.get("title", slug).strip()
+    author = cfg.get("author", "").strip()
+    base = f"{title} ({author})" if author else title
+    return f"{base} - {target}.{ext}"
+
 # -----------------------------------------------------------------------------
 # COMANDOS DA CLI
 # -----------------------------------------------------------------------------
@@ -193,9 +199,9 @@ def cmd_build(args):
                 print(f"Erro: Arquivo principal Typst não encontrado em {source_dir}", file=sys.stderr)
                 return
 
-        screen_pdf = dist_dir / f"{args.slug}-screen.pdf"
-        print_pdf = dist_dir / f"{args.slug}-print-a4.pdf"
-        kindle_pdf = dist_dir / f"{args.slug}-kindle.pdf"
+        screen_pdf = dist_dir / get_deliverable_name(cfg, args.slug, "Screen", "pdf")
+        print_pdf = dist_dir / get_deliverable_name(cfg, args.slug, "Print-A4", "pdf")
+        kindle_pdf = dist_dir / get_deliverable_name(cfg, args.slug, "Kindle", "pdf")
 
         if target in ["screen", "all"]:
             compile_typst(main_typ, screen_pdf, root_dir=BASE_DIR)
@@ -205,9 +211,9 @@ def cmd_build(args):
             compile_typst(main_typ, print_pdf, root_dir=BASE_DIR)
 
         if target in ["kindle", "all"]:
-            kindle_pdf = dist_dir / f"{args.slug}-kindle.pdf"
-            kindle_epub = dist_dir / f"{args.slug}-kindle.epub"
-            kindle_azw3 = dist_dir / f"{args.slug}-kindle.azw3"
+            kindle_pdf = dist_dir / get_deliverable_name(cfg, args.slug, "Kindle", "pdf")
+            kindle_epub = dist_dir / get_deliverable_name(cfg, args.slug, "Kindle", "epub")
+            kindle_azw3 = dist_dir / get_deliverable_name(cfg, args.slug, "Kindle", "azw3")
             print(f"[KINDLE] Construindo edições ergonômicas para Kindle (PDF fluido 10.5pt, EPUB 3 e AZW3 KF8)...")
             # 1. PDF Kindle nativo fluido (105x140mm, tipografia 10.5pt, fluxo livre entre páginas)
             build_typst_kindle_pdf(book_dir, kindle_pdf)
@@ -236,22 +242,22 @@ def cmd_build(args):
 
         if target in ["screen", "all"]:
             if screen_tex.exists():
-                out_screen = dist_dir / f"{args.slug}-screen.pdf"
+                out_screen = dist_dir / get_deliverable_name(cfg, args.slug, "Screen", "pdf")
                 compile_latex(screen_tex, out_screen, work_dir=source_dir)
 
         if target in ["print", "all"]:
             if print_tex.exists():
-                out_print = dist_dir / f"{args.slug}-print-a4.pdf"
+                out_print = dist_dir / get_deliverable_name(cfg, args.slug, "Print-A4", "pdf")
                 compile_latex(print_tex, out_print, work_dir=source_dir)
 
         if target in ["kindle", "all"]:
             if kindle_tex.exists():
-                out_kpdf = dist_dir / f"{args.slug}-kindle.pdf"
+                out_kpdf = dist_dir / get_deliverable_name(cfg, args.slug, "Kindle", "pdf")
                 compile_latex(kindle_tex, out_kpdf, work_dir=source_dir)
 
             # Construir Kindle EPUB se houver capítulos LaTeX
-            kindle_epub = dist_dir / f"{args.slug}-kindle.epub"
-            kindle_azw3 = dist_dir / f"{args.slug}-kindle.azw3"
+            kindle_epub = dist_dir / get_deliverable_name(cfg, args.slug, "Kindle", "epub")
+            kindle_azw3 = dist_dir / get_deliverable_name(cfg, args.slug, "Kindle", "azw3")
             try:
                 build_epub_for_book(book_dir, kindle_epub)
             except Exception as e:
@@ -338,7 +344,11 @@ def cmd_convert_azw3(args):
     if args.input:
         epub_path = Path(args.input)
     else:
-        candidates = list(dist_dir.glob("*-kindle.epub")) or list(dist_dir.glob("*.epub"))
+        candidates = (
+            list(dist_dir.glob("*Kindle*.epub"))
+            or list(dist_dir.glob("*-kindle.epub"))
+            or list(dist_dir.glob("*.epub"))
+        )
         if candidates:
             epub_path = candidates[0]
 
@@ -347,7 +357,7 @@ def cmd_convert_azw3(args):
         print("Compile o livro primeiro usando: python cli.py build <slug> --target kindle", file=sys.stderr)
         return
 
-    azw3_path = dist_dir / f"{args.slug}-kindle.azw3"
+    azw3_path = dist_dir / get_deliverable_name(cfg, args.slug, "Kindle", "azw3")
     ok, out_file, msg = convert_epub_to_azw3(
         epub_path,
         azw3_path,

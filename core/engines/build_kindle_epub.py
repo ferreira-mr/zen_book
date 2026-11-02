@@ -912,7 +912,18 @@ def build_epub_for_book(book_dir_or_slug, output_epub: Path = None, root_dir: Pa
     else:
         output_dir = work_dir / "dist"
         output_dir.mkdir(parents=True, exist_ok=True)
-        final_epub = output_dir / f"{book_slug}-kindle.epub"
+        byaml = work_dir / "book.yaml"
+        base_name = book_slug
+        if byaml.exists():
+            import yaml
+            try:
+                cfg = yaml.safe_load(byaml.read_text(encoding="utf-8")) or {}
+                t = cfg.get("title", book_slug).strip()
+                a = cfg.get("author", "").strip()
+                base_name = f"{t} ({a})" if a else t
+            except Exception:
+                pass
+        final_epub = output_dir / f"{base_name} - Kindle.epub"
 
     write_epub_zip(epub_staging, final_epub)
     shutil.rmtree(epub_staging)

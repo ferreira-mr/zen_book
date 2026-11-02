@@ -111,12 +111,23 @@ def convert_epub_to_azw3(
         str(converter_bin),
         str(epub_path),
         str(azw3_path),
-        "--share-not-sync",
         f"--output-profile={output_profile}",
     ]
 
     if no_inline_toc:
         cmd.append("--no-inline-toc")
+
+    if cover_path is None:
+        book_dir = epub_path.parent.parent if epub_path.parent.name == "dist" else epub_path.parent
+        for cand in [
+            book_dir / "assets" / "figures" / "capa.jpg",
+            book_dir / "assets" / "figures" / "cover.jpg",
+            book_dir / "assets" / "figures" / "capa.png",
+            book_dir / "assets" / "figures" / "cover_1.jpeg",
+        ]:
+            if cand.is_file():
+                cover_path = cand
+                break
 
     if title:
         cmd.extend(["--title", title])

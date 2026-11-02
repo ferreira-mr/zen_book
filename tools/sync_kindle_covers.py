@@ -36,17 +36,17 @@ KNOWN_ASINS = {
 # Livros que possuem versão EPUB no BookForge
 EPUB_SOURCES = {
     "Fundamentos de Manutenção de Software (Marco Tulio Valente).epub": 
-        BASE_DIR / "library/fundamentos-de-manutencao-de-software/dist/fundamentos-de-manutencao-de-software-kindle.epub",
+        BASE_DIR / "library/fundamentos-de-manutencao-de-software/dist/Fundamentos de Manutenção de Software (Marco Tulio Valente) - Kindle.epub",
     "Engenharia de Software Moderna (Marco Tulio Valente).epub": 
-        BASE_DIR / "library/engenharia-de-software-moderna/dist/engenharia-de-software-moderna-kindle.epub",
+        BASE_DIR / "library/engenharia-de-software-moderna/dist/Engenharia de Software Moderna (Marco Tulio Valente) - Kindle.epub",
     "Matemática para Vencer (Laércio Vasconcelos).epub": 
-        BASE_DIR / "library/matematica-para-vencer/dist/matematica-para-vencer-kindle.epub",
+        BASE_DIR / "library/matematica-para-vencer/dist/Matemática para Vencer (Laércio Vasconcelos) - Kindle.epub",
     "Novíssima Gramática da Língua Portuguesa (Domingos Paschoal Cegalla).epub": 
-        BASE_DIR / "library/cegalla-novissima-gramatica/dist/cegalla-novissima-gramatica-kindle.epub",
+        BASE_DIR / "library/cegalla-novissima-gramatica/dist/Novíssima Gramática da Língua Portuguesa (Domingos Paschoal Cegalla) - Kindle.epub",
     "Writing Guide with Handbook (OpenStax).epub": 
-        BASE_DIR / "library/writing-guide-with-handbook/dist/writing-guide-with-handbook-kindle.epub",
+        BASE_DIR / "library/writing-guide-with-handbook/dist/Writing Guide with Handbook (OpenStax) - Kindle.epub",
     "Aprendizado Sem Limites (Pedro Miranda).epub": 
-        BASE_DIR / "library/aprendizado-sem-limites/dist/aprendizado-sem-limites-kindle.epub",
+        BASE_DIR / "library/aprendizado-sem-limites/dist/Aprendizado Sem Limites (Pedro Miranda) - Kindle.epub",
 }
 
 def extract_cover_from_file(file_path: Path) -> Image.Image:
@@ -67,6 +67,13 @@ def extract_cover_from_file(file_path: Path) -> Image.Image:
                     except Exception:
                         continue
     elif ext == ".azw3":
+        try:
+            from tools.send_to_kindle import extract_azw3_internal_cover
+            cov = extract_azw3_internal_cover(file_path)
+            if cov:
+                return cov
+        except Exception:
+            pass
         for sib in [file_path.with_suffix(".epub"), file_path.with_suffix(".pdf")]:
             if sib.exists():
                 return extract_cover_from_file(sib)
@@ -78,9 +85,9 @@ def inject_all_thumbnail_variants(img: Image.Image, file_path: Path, target_dirs
     thumb_img = img.copy()
     thumb_img.thumbnail((330, 470), Image.Resampling.LANCZOS)
     
-    # Redimensiona versão tela cheia para proteção de tela (600x800)
+    # Redimensiona versão tela cheia para proteção de tela (1072x1448)
     full_img = img.copy()
-    full_img.thumbnail((600, 800), Image.Resampling.LANCZOS)
+    full_img.thumbnail((1072, 1448), Image.Resampling.LANCZOS)
 
     sha1 = hashlib.sha1(file_path.read_bytes()[:1024*1024]).hexdigest()
     
