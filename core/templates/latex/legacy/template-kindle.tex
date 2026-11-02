@@ -1,0 +1,179 @@
+% ==========================================================================
+% Template LaTeX Mestre — Edição Especial para Leitura no Kindle (E-Reader PDF)
+% Regras aplicadas:
+% 1. Geometria de proporção 3:4 (105mm x 140mm) calibrada para telas de 6" e 6.8" (Kindle Paperwhite, Basic, Oasis)
+% 2. Margens ultra-otimizadas (6mm a 7mm) para máximo aproveitamento da tela E-Ink sem necessidade de pinça/zoom
+% 3. Alto contraste em preto e branco (E-Ink 16 tons de cinza), sem cores pastéis desbotadas
+% 4. Sem cabeçalhos; apenas o número da página atual no canto inferior direito
+% 5. Ambientes pedagógicos com bordas nítidas e legíveis, SEM rótulos artificiais "Nota:"
+% ==========================================================================
+\documentclass[10pt,oneside,openany]{book}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazilian]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% Geometria nativa para leitores E-Ink / Kindle (Proporção 3:4 perfeita)
+\usepackage[
+  paperwidth=105mm,
+  paperheight=140mm,
+  top=6mm,
+  bottom=7mm,
+  left=7mm,
+  right=7mm,
+  footskip=4.5mm
+]{geometry}
+
+% Espaçamento confortável para leitura em telas E-Ink
+\usepackage{setspace}
+\setstretch{1.14}
+\setlength{\parskip}{0.45em}
+\setlength{\parindent}{0pt}
+
+% Controle rigoroso contra viúvas e órfãs
+\widowpenalty=10000
+\clubpenalty=10000
+\displaywidowpenalty=10000
+
+% Paleta de Alto Contraste para telas E-Ink monocromáticas (P&B puro)
+\usepackage[table]{xcolor}
+\definecolor{kindleText}{HTML}{000000}
+\definecolor{kindleBorder}{HTML}{000000}
+\definecolor{kindleBoxBg}{HTML}{F5F5F5}
+\definecolor{kindleSampleBg}{HTML}{FAFAFA}
+
+% Cabeçalho e Rodapé: Sem cabeçalho; APENAS o número da página no canto inferior direito
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[R]{\scriptsize\sffamily\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyfoot[R]{\scriptsize\sffamily\thepage}%
+  \renewcommand{\headrulewidth}{0pt}%
+  \renewcommand{\footrulewidth}{0pt}%
+}
+
+% Imagens, Tabelas e Listas
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\captionsetup{font={scriptsize,sf},labelfont=bf,labelformat=empty,skip=4pt}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\setlist[itemize]{topsep=2pt,itemsep=1.5pt,leftmargin=1.2em}
+\setlist[enumerate]{topsep=2pt,itemsep=1.5pt,leftmargin=1.3em}
+
+% Quadros Pedagógicos para E-Ink (tcolorbox de alto contraste)
+\usepackage[most]{tcolorbox}
+
+% 1. Objetivos de Aprendizagem (Título original exato, sem prefixos artificiais)
+\newtcolorbox{learningoutcomes}{
+  breakable,
+  enhanced,
+  colback=kindleBoxBg,
+  colframe=kindleBorder,
+  boxrule=0.7pt,
+  leftrule=3pt,
+  arc=1pt,
+  top=5pt,
+  bottom=5pt,
+  left=6pt,
+  right=6pt,
+  fonttitle=\small\sffamily\bfseries,
+  coltitle=kindleText,
+  attach title to upper={\par\smallskip},
+  title={Objetivos de Aprendizagem}
+}
+
+% 2. Quadro com Título Próprio do Livro
+\newtcolorbox{featurebox}[1]{
+  breakable,
+  enhanced,
+  colback=kindleBoxBg,
+  colframe=kindleBorder,
+  boxrule=0.7pt,
+  leftrule=3pt,
+  arc=1pt,
+  top=5pt,
+  bottom=5pt,
+  left=6pt,
+  right=6pt,
+  fonttitle=\small\sffamily\bfseries,
+  coltitle=kindleText,
+  attach title to upper={\par\smallskip},
+  title={#1}
+}
+
+% 3. Amostra de Texto / Citação em Destaque
+\newtcolorbox{sampletext}{
+  breakable,
+  enhanced,
+  colback=kindleSampleBg,
+  colframe=kindleBorder,
+  boxrule=0.5pt,
+  leftrule=2.5pt,
+  arc=1pt,
+  top=4pt,
+  bottom=4pt,
+  left=6pt,
+  right=6pt
+}
+
+% 4. Comentário Analítico / Anotação
+\newtcolorbox{analysisnote}{
+  breakable,
+  enhanced,
+  colback=kindleBoxBg,
+  colframe=kindleBorder,
+  boxrule=0.5pt,
+  leftrule=2.5pt,
+  arc=1pt,
+  top=4pt,
+  bottom=4pt,
+  left=6pt,
+  right=6pt,
+  fontupper=\small\sffamily
+}
+
+% Macro padronizada para inserção de figuras ajustadas à tela do Kindle
+\newcommand{\bookfigure}[2]{%
+  \begin{center}
+    \vspace{3pt}
+    \includegraphics[width=0.98\textwidth, height=0.45\textheight, keepaspectratio]{#1}\par
+    \vspace{3pt}
+    {\scriptsize\sffamily\color{kindleText} #2}\par
+    \vspace{4pt}
+  \end{center}
+}
+
+% Links e Sumário Clicável compatível com navegação e bookmarks do Kindle
+\usepackage[
+  colorlinks=false,
+  pdfborder={0 0 0},
+  bookmarks=true,
+  bookmarksnumbered=true,
+  bookmarksopen=true
+]{hyperref}
+
+\begin{document}
+
+% Capa / Folha de Rosto e Sumário
+\pagenumbering{arabic}
+\tableofcontents
+\clearpage
+
+% ==========================================================================
+% INSERIR CAPÍTULOS TRADUZIDOS ABAIXO COM \input{chapters/XX-capitulo.tex}
+% ==========================================================================
+% __CHAPTER_INPUTS__
+
+\end{document}

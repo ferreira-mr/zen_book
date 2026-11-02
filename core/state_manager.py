@@ -46,6 +46,12 @@ def get_manifest_stats(manifest: Dict[str, Any]) -> Tuple[int, int]:
         if completed == 0 and manifest.get("book"):  # Livro 100% concluído
             completed = total
 
+    # 5. Se há lista de unidades (ex: writing-guide-with-handbook)
+    units = manifest.get("units", [])
+    if units and (total is None or total == 0):
+        total = len(units)
+        completed = len([u for u in units if isinstance(u, dict) and u.get("status") in ["verified", "completed", "done"]])
+
     total = total or 0
     completed = completed if completed is not None else (total if manifest.get("status") == "completed" else 0)
     return (total, completed)

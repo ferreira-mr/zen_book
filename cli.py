@@ -28,11 +28,13 @@ from core.engines.compiler_typst import compile_typst
 from core.engines.kindle_pdf_scaler import scale_pdf_to_kindle
 from core.engines.build_kindle_epub import build_epub_for_book
 from core.engines.typst_kindle_builder import build_typst_kindle_pdf, build_typst_kindle_epub
+from core.engines.azw3_converter import convert_epub_to_azw3, find_ebook_convert
 from core.image_pipeline.deskew import deskew_image
 from core.image_pipeline.binarize_clean import clean_scanned_page
 from core.image_pipeline.extract_figures import extract_pdf_embedded_images
 from core.image_pipeline.ocr_draft import render_page_image
 from core.state_manager import load_manifest, save_manifest, update_progress_md, get_manifest_stats
+from tools.send_to_kindle import send_book_to_kindle
 
 LIBRARY_DIR = BASE_DIR / "library"
 
@@ -83,7 +85,7 @@ def cmd_list(args):
         dist_files = []
         dist_dir = b / "dist"
         if dist_dir.exists():
-            dist_files = [f.name for f in dist_dir.iterdir() if f.is_file() and f.suffix in [".pdf", ".epub"]]
+            dist_files = [f.name for f in dist_dir.iterdir() if f.is_file() and f.suffix in [".pdf", ".epub", ".azw3"]]
 
         print(f"📖 [{b.name}]")
         print(f"   Título:   {title} ({author})")
@@ -160,7 +162,7 @@ def cmd_status(args):
     if dist_dir.exists():
         found = False
         for f in sorted(dist_dir.iterdir()):
-            if f.is_file() and f.suffix in [".pdf", ".epub"]:
+            if f.is_file() and f.suffix in [".pdf", ".epub", ".azw3"]:
                 found = True
                 print(f"  ✓ {f.name:45} ({f.stat().st_size / (1024*1024):6.2f} MB)")
         if not found:
@@ -205,7 +207,8 @@ def cmd_build(args):
         if target in ["kindle", "all"]:
             kindle_pdf = dist_dir / f"{args.slug}-kindle.pdf"
             kindle_epub = dist_dir / f"{args.slug}-kindle.epub"
-            print(f"[KINDLE] Construindo edições ergonômicas para Kindle (PDF fluido 10.5pt e EPUB 3)...")
+            kindle_azw3 = dist_dir / f"{args.slug}-kindle.azw3"
+            print(f"[KINDLE] Construindo edições ergonômicas para Kindle (PDF fluido 10.5pt, EPUB 3 e AZW3 KF8)...")
             # 1. PDF Kindle nativo fluido (105x140mm, tipografia 10.5pt, fluxo livre entre páginas)
             build_typst_kindle_pdf(book_dir, kindle_pdf)
             # 2. EPUB 3 refluxável com Bookerly CSS
@@ -213,6 +216,17 @@ def cmd_build(args):
                 build_typst_kindle_epub(book_dir, kindle_epub)
             except Exception as e:
                 print(f"[KINDLE-EPUB] Aviso ao gerar EPUB: {e}")
+            # 3. Conversão automática para AZW3 nativo via Calibre
+            if kindle_epub.exists():
+                try:
+                    convert_epub_to_azw3(
+                        kindle_epub,
+                        kindle_azw3,
+                        title=cfg.get("title", args.slug),
+                        author=cfg.get("author", "")
+                    )
+                except Exception as e:
+                    print(f"[KINDLE-AZW3] Aviso ao gerar AZW3: {e}")
 
     elif engine == "latex":
         # Compilação LaTeX
@@ -236,10 +250,24 @@ def cmd_build(args):
                 compile_latex(kindle_tex, out_kpdf, work_dir=source_dir)
 
             # Construir Kindle EPUB se houver capítulos LaTeX
+            kindle_epub = dist_dir / f"{args.slug}-kindle.epub"
+            kindle_azw3 = dist_dir / f"{args.slug}-kindle.azw3"
             try:
-                build_epub_for_book(book_dir, dist_dir / f"{args.slug}-kindle.epub")
+                build_epub_for_book(book_dir, kindle_epub)
             except Exception as e:
                 print(f"[EPUB] Aviso ao gerar EPUB: {e}")
+
+            # Conversão automática para AZW3 nativo via Calibre
+            if kindle_epub.exists():
+                try:
+                    convert_epub_to_azw3(
+                        kindle_epub,
+                        kindle_azw3,
+                        title=cfg.get("title", args.slug),
+                        author=cfg.get("author", "")
+                    )
+                except Exception as e:
+                    print(f"[KINDLE-AZW3] Aviso ao gerar AZW3: {e}")
 
     update_progress_md(book_dir, cfg.get("title", args.slug), cfg.get("author", ""), engine)
     print(f"\n[BUILD] Processo de compilação finalizado para {args.slug}.\n")
@@ -300,6 +328,37 @@ def cmd_render_pages(args):
         render_page_image(pdfs[0], p, target_png, dpi=dpi)
     print("[RENDER] Renderização concluída.")
 
+def cmd_convert_azw3(args):
+    """Converte o EPUB do livro para AZW3 (KF8 nativo) usando o Calibre local."""
+    book_dir = get_book_dir(args.slug)
+    cfg = load_book_config(book_dir)
+    dist_dir = book_dir / "dist"
+
+    epub_path = None
+    if args.input:
+        epub_path = Path(args.input)
+    else:
+        candidates = list(dist_dir.glob("*-kindle.epub")) or list(dist_dir.glob("*.epub"))
+        if candidates:
+            epub_path = candidates[0]
+
+    if not epub_path or not epub_path.exists():
+        print(f"Erro: Arquivo EPUB não encontrado em {dist_dir}.", file=sys.stderr)
+        print("Compile o livro primeiro usando: python cli.py build <slug> --target kindle", file=sys.stderr)
+        return
+
+    azw3_path = dist_dir / f"{args.slug}-kindle.azw3"
+    ok, out_file, msg = convert_epub_to_azw3(
+        epub_path,
+        azw3_path,
+        title=cfg.get("title", args.slug),
+        author=cfg.get("author", "")
+    )
+    if ok and out_file:
+        print(f"\n[OK] Arquivo AZW3 gerado com sucesso: {out_file.name}")
+    else:
+        print(f"\n[FALHA] Falha ao converter AZW3: {msg}", file=sys.stderr)
+
 # -----------------------------------------------------------------------------
 # MAIN CLI PARSER
 # -----------------------------------------------------------------------------
@@ -333,6 +392,12 @@ def main():
     p_build.add_argument("--target", choices=["screen", "print", "kindle", "all"], default="all")
     p_build.set_defaults(func=cmd_build)
 
+    # convert-azw3
+    p_azw = subparsers.add_parser("convert-azw3", help="Converte EPUB para AZW3 (KF8 nativo) localmente via Calibre")
+    p_azw.add_argument("slug", help="Slug do livro")
+    p_azw.add_argument("--input", help="Caminho específico do EPUB (opcional)")
+    p_azw.set_defaults(func=cmd_convert_azw3)
+
     # enhance
     p_enh = subparsers.add_parser("enhance", help="Restaura e alinha páginas em imagem")
     p_enh.add_argument("slug", help="Slug do livro")
@@ -352,6 +417,15 @@ def main():
     p_rnd.add_argument("--end", type=int, required=True)
     p_rnd.add_argument("--dpi", type=int, default=160)
     p_rnd.set_defaults(func=cmd_render_pages)
+
+    # send-kindle
+    p_send = subparsers.add_parser("send-kindle", help="Transfere AZW3 e/ou PDF para o Kindle e injeta miniaturas de capa")
+    p_send.add_argument("slug", help="Slug do livro")
+    p_send.add_argument("--drive", help="Unidade do Kindle (ex: E:)")
+    p_send.add_argument("--format", choices=["azw3", "pdf", "both", "all"], default="both", help="Formato a transferir (padrão: both [azw3 + pdf])")
+    p_send.add_argument("--include-epub", action="store_true", help="Copia também o arquivo EPUB se solicitado")
+    p_send.add_argument("--asin", help="ASIN da Amazon para associação de capa (opcional)", default="")
+    p_send.set_defaults(func=lambda args: send_book_to_kindle(args.slug, target_drive=args.drive, format_choice=args.format, include_epub=args.include_epub, asin=args.asin))
 
     args = parser.parse_args()
     args.func(args)

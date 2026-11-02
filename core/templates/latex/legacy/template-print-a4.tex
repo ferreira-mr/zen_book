@@ -1,0 +1,181 @@
+% ==========================================================================
+% Template LaTeX Mestre — Edição para Impressão em Folha A4 (Print A4 PDF)
+% Regras aplicadas:
+% 1. Papel A4 (210mm x 297mm) com margens editoriais para impressão e manuseio
+% 2. Tipografia impressa de alta nitidez, microtype e controle de viúvas/órfãs
+% 3. Sem cabeçalhos; apenas o número da página atual no canto inferior direito
+% 4. Quadros de alto contraste para impressão (colorida ou P&B) sem "Nota:" artificial
+% ==========================================================================
+\documentclass[11pt,a4paper,oneside,openany]{book}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% Geometria editorial calibrada para Impressão em Folha A4 (210mm x 297mm)
+\usepackage[
+  a4paper,
+  top=25mm,
+  bottom=25mm,
+  left=28mm,
+  right=22mm,
+  footskip=12mm
+]{geometry}
+
+% Ritmo tipográfico para leitura impressa em A4
+\usepackage{setspace}
+\setstretch{1.15}
+\setlength{\parskip}{0.45em}
+\setlength{\parindent}{1.25em}
+
+% Controle rigoroso de linhas viúvas e órfãs na impressão
+\widowpenalty=10000
+\clubpenalty=10000
+\displaywidowpenalty=10000
+
+% Paleta otimizada para Impressão Física (excelente contraste em P&B e Colorido)
+\usepackage[table]{xcolor}
+\definecolor{printText}{HTML}{000000}
+\definecolor{outcomesPrintBg}{HTML}{F4F6F9}
+\definecolor{outcomesPrintBorder}{HTML}{1E3A8A}
+\definecolor{featurePrintBg}{HTML}{F7F7F7}
+\definecolor{featurePrintBorder}{HTML}{374151}
+\definecolor{samplePrintBg}{HTML}{FAFAFA}
+\definecolor{samplePrintBorder}{HTML}{6B7280}
+\definecolor{analysisPrintBg}{HTML}{F3F4F6}
+\definecolor{analysisPrintBorder}{HTML}{111827}
+
+% Cabeçalho e Rodapé: APENAS o número da página atual no canto inferior direito
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyfoot[R]{\small\thepage}%
+  \renewcommand{\headrulewidth}{0pt}%
+  \renewcommand{\footrulewidth}{0pt}%
+}
+
+% Imagens, Tabelas e Listas
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\captionsetup{font={small},labelfont=bf,labelformat=empty,skip=6pt}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\setlist[itemize]{topsep=3pt,itemsep=2pt,leftmargin=1.5em}
+\setlist[enumerate]{topsep=3pt,itemsep=2pt,leftmargin=1.6em}
+
+% Quadros Pedagógicos (tcolorbox) — Sem prefixos artificiais "Nota:"
+\usepackage[most]{tcolorbox}
+
+% 1. Objetivos de Aprendizagem (Título fixo fiel ao original)
+\newtcolorbox{learningoutcomes}{
+  breakable,
+  enhanced,
+  colback=outcomesPrintBg,
+  colframe=outcomesPrintBorder,
+  boxrule=0.7pt,
+  leftrule=3.5pt,
+  arc=1.5pt,
+  top=8pt,
+  bottom=8pt,
+  left=10pt,
+  right=10pt,
+  fonttitle=\sffamily\bfseries,
+  coltitle=printText,
+  attach title to upper={\par\medskip},
+  title={Objetivos de Aprendizagem}
+}
+
+% 2. Quadro / Seção em Destaque com Título Próprio do Livro
+\newtcolorbox{featurebox}[1]{
+  breakable,
+  enhanced,
+  colback=featurePrintBg,
+  colframe=featurePrintBorder,
+  boxrule=0.7pt,
+  leftrule=3.5pt,
+  arc=1.5pt,
+  top=8pt,
+  bottom=8pt,
+  left=10pt,
+  right=10pt,
+  fonttitle=\sffamily\bfseries,
+  coltitle=printText,
+  attach title to upper={\par\medskip},
+  title={#1}
+}
+
+% 3. Amostra de Texto / Postagem Analisada
+\newtcolorbox{sampletext}{
+  breakable,
+  enhanced,
+  colback=samplePrintBg,
+  colframe=samplePrintBorder,
+  boxrule=0.5pt,
+  leftrule=3pt,
+  arc=1pt,
+  top=6pt,
+  bottom=6pt,
+  left=10pt,
+  right=10pt
+}
+
+% 4. Comentário Analítico / Anotação Retórica sobre a Amostra
+\newtcolorbox{analysisnote}{
+  breakable,
+  enhanced,
+  colback=analysisPrintBg,
+  colframe=analysisPrintBorder,
+  boxrule=0.5pt,
+  leftrule=3pt,
+  arc=1pt,
+  top=6pt,
+  bottom=6pt,
+  left=10pt,
+  right=10pt,
+  fontupper=\small\sffamily
+}
+
+% Macro padronizada para inserção de figuras (compatível com texto normal e interior de boxes)
+\newcommand{\bookfigure}[2]{%
+  \begin{center}
+    \vspace{4pt}
+    \includegraphics[width=0.88\textwidth, height=0.45\textheight, keepaspectratio]{#1}\par
+    \vspace{4pt}
+    {\small\sffamily\color{printText} #2}\par
+    \vspace{6pt}
+  \end{center}
+}
+
+% Links em preto nítido para impressão física perfeita (sem perda de contraste)
+\usepackage[
+  colorlinks=true,
+  allcolors=black,
+  bookmarksnumbered=true,
+  pdfborder={0 0 0}
+]{hyperref}
+
+\begin{document}
+
+% Capa / Folha de Rosto e Sumário
+\pagenumbering{arabic}
+\tableofcontents
+\clearpage
+
+% ==========================================================================
+% INSERIR CAPÍTULOS TRADUZIDOS ABAIXO COM \input{chapters/XX-capitulo.tex}
+% ==========================================================================
+% __CHAPTER_INPUTS__
+
+\end{document}

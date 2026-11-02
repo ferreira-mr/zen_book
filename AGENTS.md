@@ -208,6 +208,10 @@ O agente deve usar **exclusivamente** o ambiente virtual `.venv` para executar t
 .venv\Scripts\python.exe cli.py build <slug> --target kindle
 .venv\Scripts\python.exe cli.py build <slug> --target all
 
+# Conversão e Transferência para Kindle
+.venv\Scripts\python.exe cli.py convert-azw3 <slug>
+.venv\Scripts\python.exe cli.py send-kindle <slug> --format both
+
 # Pipeline de Imagens
 .venv\Scripts\python.exe cli.py render-pages <slug> --start 1 --end 20 --dpi 160
 .venv\Scripts\python.exe cli.py enhance <slug> --deskew --clean

@@ -1,0 +1,189 @@
+% ==========================================================================
+% Template LaTeX Mestre — Edição para Leitura em Telas (Screen Comfort PDF)
+% Regras aplicadas:
+% 1. Coluna única fluida com largura de linha confortável (~66 caracteres)
+% 2. Sem cabeçalhos; apenas o número da página atual no canto inferior direito
+% 3. Ambientes pedagógicos fiéis ao original (SEM prefixos artificiais "Nota:")
+% ==========================================================================
+\documentclass[11pt,oneside,openany]{book}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{textcomp}
+\usepackage{microtype}
+
+% Geometria otimizada para leitura em Telas (Monitores / Tablets)
+\usepackage[
+  paperwidth=185mm,
+  paperheight=260mm,
+  top=20mm,
+  bottom=22mm,
+  left=22mm,
+  right=22mm,
+  footskip=10mm
+]{geometry}
+
+% Espaçamento confortável para leitura em tela
+\usepackage{setspace}
+\setstretch{1.22}
+\setlength{\parskip}{0.6em}
+\setlength{\parindent}{0pt}
+
+% Controle de viúvas e órfãs
+\widowpenalty=10000
+\clubpenalty=10000
+
+% Cores suaves para leitura digital
+\usepackage[table]{xcolor}
+\definecolor{screenBg}{HTML}{FAF8F5}
+\definecolor{textPrimary}{HTML}{222428}
+\definecolor{accentBlue}{HTML}{1D4ED8}
+\definecolor{outcomesBg}{HTML}{EFF6FF}
+\definecolor{outcomesBorder}{HTML}{3B82F6}
+\definecolor{featureBg}{HTML}{F3F4F6}
+\definecolor{featureBorder}{HTML}{4B5563}
+\definecolor{sampleBg}{HTML}{FFFBEB}
+\definecolor{sampleBorder}{HTML}{D97706}
+\definecolor{analysisBg}{HTML}{F0FDF4}
+\definecolor{analysisBorder}{HTML}{16A34A}
+
+% Cabeçalho e Rodapé: APENAS o número da página atual no canto inferior direito
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[R]{\small\sffamily\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancypagestyle{plain}{%
+  \fancyhf{}%
+  \fancyfoot[R]{\small\sffamily\thepage}%
+  \renewcommand{\headrulewidth}{0pt}%
+  \renewcommand{\footrulewidth}{0pt}%
+}
+
+% Imagens, Tabelas e Listas
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\captionsetup{font={small,sf},labelfont=bf,labelformat=empty,skip=6pt}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\setlist[itemize]{topsep=4pt,itemsep=3pt,leftmargin=1.5em}
+\setlist[enumerate]{topsep=4pt,itemsep=3pt,leftmargin=1.6em}
+
+% Quadros Pedagógicos (tcolorbox) — Sem prefixos artificiais "Nota:"
+\usepackage[most]{tcolorbox}
+
+% 1. Objetivos de Aprendizagem (Título fixo fiel ao original)
+\newtcolorbox{learningoutcomes}{
+  breakable,
+  enhanced,
+  colback=outcomesBg,
+  colframe=outcomesBorder,
+  boxrule=0.6pt,
+  leftrule=3.5pt,
+  arc=3pt,
+  top=8pt,
+  bottom=8pt,
+  left=10pt,
+  right=10pt,
+  fonttitle=\sffamily\bfseries,
+  coltitle=textPrimary,
+  attach title to upper={\par\medskip},
+  title={Objetivos de Aprendizagem}
+}
+
+% 2. Quadro / Seção em Destaque com Título Próprio do Livro
+\newtcolorbox{featurebox}[1]{
+  breakable,
+  enhanced,
+  colback=featureBg,
+  colframe=featureBorder,
+  boxrule=0.6pt,
+  leftrule=3.5pt,
+  arc=3pt,
+  top=8pt,
+  bottom=8pt,
+  left=10pt,
+  right=10pt,
+  fonttitle=\sffamily\bfseries,
+  coltitle=textPrimary,
+  attach title to upper={\par\medskip},
+  title={#1}
+}
+
+% 3. Amostra de Texto / Postagem Analisada
+\newtcolorbox{sampletext}{
+  breakable,
+  enhanced,
+  colback=sampleBg,
+  colframe=sampleBorder,
+  boxrule=0.4pt,
+  leftrule=3pt,
+  arc=2pt,
+  top=6pt,
+  bottom=6pt,
+  left=10pt,
+  right=10pt
+}
+
+% 4. Comentário Analítico / Anotação Retórica sobre a Amostra
+\newtcolorbox{analysisnote}{
+  breakable,
+  enhanced,
+  colback=analysisBg,
+  colframe=analysisBorder,
+  boxrule=0.4pt,
+  leftrule=3pt,
+  arc=2pt,
+  top=6pt,
+  bottom=6pt,
+  left=10pt,
+  right=10pt,
+  fontupper=\small\sffamily
+}
+
+% Macro padronizada para inserção de figuras (compatível com texto normal e interior de boxes)
+\newcommand{\bookfigure}[2]{%
+  \begin{center}
+    \vspace{4pt}
+    \includegraphics[width=0.90\textwidth, height=0.48\textheight, keepaspectratio]{#1}\par
+    \vspace{4pt}
+    {\small\sffamily\color{textPrimary} #2}\par
+    \vspace{6pt}
+  \end{center}
+}
+
+% Links e Sumário Clicável
+\usepackage[
+  colorlinks=true,
+  linkcolor=accentBlue,
+  urlcolor=accentBlue,
+  citecolor=accentBlue,
+  bookmarksnumbered=true,
+  pdfborder={0 0 0}
+]{hyperref}
+
+\begin{document}
+\pagenumbering{arabic}
+
+% Folha de Rosto e Créditos (Páginas Preliminares)
+\input{chapters/00-preliminares.tex}
+
+% Sumário Clicável
+\tableofcontents
+\clearpage
+
+% ==========================================================================
+% CAPÍTULOS E PARTES DO LIVRO
+% ==========================================================================
+% __CHAPTER_INPUTS__
+
+\end{document}

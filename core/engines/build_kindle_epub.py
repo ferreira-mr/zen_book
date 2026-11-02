@@ -3,263 +3,461 @@ build_kindle_epub.py — Gera edições EPUB 3 otimizadas para leitura no Amazon
 a partir dos arquivos de capítulos traduzidos em LaTeX (.tex) e do manifest.json.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import html
 import uuid
-import zipfile
 import shutil
 from pathlib import Path
 import json
+from typing import List, Tuple, Dict
 
-def latex_to_html_body(tex_content: str, image_rel_prefix: str = "assets/images/") -> tuple[str, list[tuple[str, str]]]:
+from core.engines.epub_utils import (
+    html_to_xhtml_fragment,
+    xhtml_document,
+    validate_xhtml,
+    report_leaks,
+    write_epub_zip,
+)
+
+def extract_macro_args(text: str, macro_name: str, num_args: int = 1) -> List[Tuple[int, int, List[str]]]:
+    """Localiza chamadas de macro \\macro_name{arg1}{arg2}... com suporte rigoroso a chaves aninhadas."""
+    pattern = re.compile(rf'\\{re.escape(macro_name)}\*?\b')
+    results = []
+    pos = 0
+    while True:
+        m = pattern.search(text, pos)
+        if not m:
+            break
+        start_idx = m.start()
+        cur = m.end()
+        args = []
+        valid = True
+        for _ in range(num_args):
+            while cur < len(text) and text[cur].isspace():
+                cur += 1
+            if cur >= len(text) or text[cur] != '{':
+                valid = False
+                break
+            depth = 1
+            arg_start = cur + 1
+            cur += 1
+            while cur < len(text) and depth > 0:
+                if text[cur] == '{':
+                    depth += 1
+                elif text[cur] == '}':
+                    depth -= 1
+                cur += 1
+            if depth != 0:
+                valid = False
+                break
+            args.append(text[arg_start:cur - 1])
+        if valid and len(args) == num_args:
+            results.append((start_idx, cur, args))
+            pos = cur
+        else:
+            pos = m.end()
+    return results
+
+def latex_to_html_body(tex_content: str, image_rel_prefix: str = "assets/images/") -> Tuple[str, List[Tuple[str, str]]]:
     """
     Converte código LaTeX dos capítulos para XHTML semântico, retornando o corpo HTML
     e uma lista de seções/títulos encontrados (nível, título).
     """
-    lines = tex_content.splitlines()
-    out = []
     toc_entries = []
-    
-    in_itemize = False
-    in_enumerate = False
-    in_table = False
-    in_quote = False
-    in_box = False
-    box_title = ""
-    box_type = ""
-    table_rows = []
-    
-    # Pré-processamento de macros simples e caracteres especiais
-    def clean_inline(text: str) -> str:
-        # Escapamentos LaTeX -> caracteres reais
-        # Cuidado com URLs e hrefs primeiro
-        
-        # href
-        def repl_href(m):
-            url = m.group(1)
-            label = clean_inline(m.group(2))
-            return f'<a href="{url}">{label}</a>'
-        text = re.sub(r'\\href\{([^}]+)\}\{([^}]+)\}', repl_href, text)
-        
-        # url
-        def repl_url(m):
-            url = m.group(1)
-            return f'<a href="{url}">{url}</a>'
-        text = re.sub(r'\\url\{([^}]+)\}', repl_url, text)
-        
-        # textbf
-        text = re.sub(r'\\textbf\{([^{}]+)\}', r'<strong>\1</strong>', text)
-        text = re.sub(r'\\textbf\{([^{}]+)\}', r'<strong>\1</strong>', text) # pass 2 for nested
-        
-        # textit / emph
-        text = re.sub(r'\\(?:textit|emph)\{([^{}]+)\}', r'<em>\1</em>', text)
-        text = re.sub(r'\\(?:textit|emph)\{([^{}]+)\}', r'<em>\1</em>', text)
-        
-        # texttt
-        text = re.sub(r'\\texttt\{([^{}]+)\}', r'<code>\1</code>', text)
-        
-        # Aspas tipográficas LaTeX: `` e ''
-        text = text.replace("``", "“").replace("''", "”")
-        text = text.replace("---", "—").replace("--", "–")
-        
-        # Escapamentos LaTeX comuns
-        text = text.replace(r"\%", "%")
-        text = text.replace(r"\&", "&amp;")
-        text = text.replace(r"\#", "#")
-        text = text.replace(r"\$", "$")
-        text = text.replace(r"\_", "_")
-        text = text.replace(r"\copyright", "©")
-        text = text.replace(r"\par\medskip", "<br/>")
-        text = text.replace(r"\par\smallskip", "<br/>")
-        text = text.replace(r"\par", "<br/>")
-        text = text.replace(r"\noindent", "")
-        text = text.replace(r"\\", "<br/>")
-        
-        return text
 
-    i = 0
-    while i < len(lines):
-        line = lines[i].strip()
-        i += 1
-        
-        if not line:
-            continue
-            
-        # Comentários LaTeX puros
-        if line.startswith("%"):
-            continue
-            
-        # Comandos de página ou geometria ignorados no EPUB
-        if any(line.startswith(cmd) for cmd in [
-            r"\clearpage", r"\newpage", r"\vfill", r"\vspace", r"\frontmatter", 
-            r"\mainmatter", r"\backmatter", r"\tableofcontents", r"\addcontentsline",
-            r"\begin{titlepage}", r"\end{titlepage}", r"\begin{center}", r"\end{center}",
-            r"\centering", r"\raggedleft", r"\raggedright", r"\pagenumbering", r"\small",
-            r"\footnotesize", r"\large", r"\Large", r"\Huge", r"\toprule", r"\midrule",
-            r"\bottomrule", r"\addlinespace", r"\hline", r"\endfirsthead", r"\endhead"
-        ]):
-            continue
+    # 1. Remover comentários LaTeX puros
+    tex = re.sub(r'(?<!\\)%.*$', '', tex_content, flags=re.MULTILINE)
 
-        # Inclusão de figuras isoladas (\includegraphics)
-        inc_m = re.match(r'\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}', line)
-        if inc_m:
-            img_path = inc_m.group(1)
-            img_filename = Path(img_path).name
-            out.append(f'<div class="figure-container"><img src="{image_rel_prefix}{img_filename}" alt="Figura" class="kindle-img" /></div>')
-            continue
+    # 2. Remover macros de cabeçalho/numeração e espaçamentos
+    for start, end, _ in reversed(extract_macro_args(tex, 'addcontentsline', 3)):
+        tex = tex[:start] + '' + tex[end:]
+    for start, end, _ in reversed(extract_macro_args(tex, 'thispagestyle', 1)):
+        tex = tex[:start] + '' + tex[end:]
+    for start, end, _ in reversed(extract_macro_args(tex, 'pagenumbering', 1)):
+        tex = tex[:start] + '' + tex[end:]
 
-        # Macro \bookfigure{caminho}{legenda}
-        bf_m = re.match(r'\\bookfigure\{([^}]+)\}\{([^}]+)\}', line)
-        if bf_m:
-            img_path = bf_m.group(1)
-            caption = clean_inline(bf_m.group(2))
-            img_filename = Path(img_path).name
-            out.append(f'<figure class="kindle-figure"><img src="{image_rel_prefix}{img_filename}" alt="{html.escape(caption)}" class="kindle-img" /><figcaption>{caption}</figcaption></figure>')
-            continue
+    tex = re.sub(r'\\vspace\*?(?:\{[^}]*\}|\s*\\fill|\s*[0-9.]+[a-zA-Z]+)', '', tex)
+    tex = re.sub(r'\\hspace\*?(?:\{[^}]*\}|\s*\\fill|\s*[0-9.]+[a-zA-Z]+)', '', tex)
+    tex = re.sub(r'\\(?:clearpage|newpage|vfill|noindent|frontmatter|mainmatter|backmatter|tableofcontents|centering|raggedleft|raggedright)\b', '', tex)
 
-        # Capítulos e Seções
-        ch_m = re.match(r'\\chapter\*?\{([^}]+)\}', line)
-        if ch_m:
-            title = clean_inline(ch_m.group(1))
-            toc_entries.append(("chapter", title))
-            out.append(f'<h1 class="chapter-title">{title}</h1>')
-            continue
+    # Normalizar quebras de parágrafo LaTeX
+    tex = re.sub(r'\\par\s*\}', r'}\n\n', tex)
+    tex = re.sub(r'\\par\\(?:medskip|smallskip|bigskip)\b', '\n\n', tex)
+    tex = re.sub(r'\\par\b', '\n\n', tex)
+    tex = re.sub(r'\\newline\b', '<br/>', tex)
 
-        sec_m = re.match(r'\\section\*?\{([^}]+)\}', line)
-        if sec_m:
-            title = clean_inline(sec_m.group(1))
-            toc_entries.append(("section", title))
-            out.append(f'<h2 class="section-title">{title}</h2>')
-            continue
+    # Fill-in-the-blank underlines (com ou sem hspace)
+    tex = re.sub(r'\\underline\{(?:\\hspace\*?(?:\{[^}]*\}|[0-9.]+[a-zA-Z]+)|\s*)\}', '_______', tex)
 
-        ssec_m = re.match(r'\\subsection\*?\{([^}]+)\}', line)
-        if ssec_m:
-            title = clean_inline(ssec_m.group(1))
-            toc_entries.append(("subsection", title))
-            out.append(f'<h3 class="subsection-title">{title}</h3>')
-            continue
+    # TeX accents e caracteres especiais
+    tex = re.sub(r'\\=[{]?u[}]?', 'ū', tex)
+    tex = re.sub(r'\\=[{]?a[}]?', 'ā', tex)
+    tex = re.sub(r'\\=[{]?(?:\\i\{\}|\\i|i)[}]?', 'ī', tex)
+    tex = re.sub(r'\\i\{\}|\\i\b', 'i', tex)
+    tex = tex.replace('{}', '')
 
-        sssec_m = re.match(r'\\subsubsection\*?\{([^}]+)\}', line)
-        if sssec_m:
-            title = clean_inline(sssec_m.group(1))
-            out.append(f'<h4 class="subsubsection-title">{title}</h4>')
-            continue
+    # Links com suporte a chaves aninhadas no rótulo
+    for start, end, (url, label) in reversed(extract_macro_args(tex, 'href', 2)):
+        tex = tex[:start] + f'<a href="{url}">{label}</a>' + tex[end:]
+    tex = re.sub(r'\\url\{([^}]+)\}', r'<a href="\1">\1</a>', tex)
 
-        # Ambientes pedagógicos: learningoutcomes
-        if line.startswith(r"\begin{learningoutcomes}"):
-            in_box = True
-            box_type = "learningoutcomes"
-            out.append('<aside class="kindle-box outcomes-box">')
-            out.append('<h4 class="box-title">Objetivos de Aprendizagem</h4>')
-            continue
-        elif line.startswith(r"\end{learningoutcomes}"):
-            in_box = False
-            out.append('</aside>')
-            continue
+    # 3. Proteger chaves escapadas \{ e \}
+    tex = tex.replace(r'\{', '@@LBRACE@@').replace(r'\}', '@@RBRACE@@')
 
-        # Ambientes pedagógicos: featurebox
-        fb_m = re.match(r'\\begin\{featurebox\}\{([^}]+)\}', line)
-        if fb_m:
-            in_box = True
-            box_type = "featurebox"
-            box_title = clean_inline(fb_m.group(1))
-            out.append('<aside class="kindle-box feature-box">')
-            out.append(f'<h4 class="box-title">{box_title}</h4>')
-            continue
-        elif line.startswith(r"\end{featurebox}"):
-            in_box = False
-            out.append('</aside>')
-            continue
+    # 4. Símbolos LaTeX e tipografia
+    SYMBOLS = [
+        (r'\copyright', '©'),
+        (r'\textregistered', '®'),
+        (r'\textbullet', '•'),
+        (r'\textordmasculine', 'º'),
+        (r'\textordfeminine', 'ª'),
+        (r'\textbackslash', '\\'),
+        (r'\textasciitilde{}', '~'),
+        (r'\textasciitilde', '~'),
+        (r'\textasciicircum', '^'),
+        (r'\textbar', '|'),
+        (r'\textless', '&lt;'),
+        (r'\textgreater', '&gt;'),
+        (r'\dots', '…'),
+        (r'\ldots', '…'),
+        (r'\times', '×'),
+        (r'\div', '÷'),
+        (r'\rightarrow', '→'),
+        (r'\leftarrow', '←'),
+        (r'\uparrow', '↑'),
+        (r'\downarrow', '↓'),
+        (r'\pi', 'π'),
+        (r'\Sigma', 'Σ'),
+        (r'\alpha', 'α'),
+        (r'\beta', 'β'),
+        (r'\lambda', 'λ'),
+        (r'\mu', 'μ'),
+        (r'\infty', '∞'),
+        (r'\ge', '≥'),
+        (r'\le', '≤'),
+        (r'\neq', '≠'),
+        (r'\approx', '≈'),
+        (r'\forall', '∀'),
+        (r'\exists', '∃'),
+        (r'\wedge', '∧'),
+        (r'\circ', '°'),
+        (r'\quad', ' '),
+        (r'\qquad', '  '),
+        (r'\%', '%'),
+        (r'\&', '&amp;'),
+        (r'\#', '#'),
+        (r'\_', '_'),
+        (r'\$', '$'),
+    ]
 
-        # sampletext
-        if line.startswith(r"\begin{sampletext}"):
-            out.append('<div class="kindle-sample">')
-            continue
-        elif line.startswith(r"\end{sampletext}"):
-            out.append('</div>')
-            continue
+    def clean_math(expr: str) -> str:
+        expr = re.sub(r'([a-zA-Z0-9])\^\{?([a-zA-Z0-9+-]+)\}?', r'\1<sup>\2</sup>', expr)
+        expr = re.sub(r'([a-zA-Z0-9])_\{?([a-zA-Z0-9+-]+)\}?', r'\1<sub>\2</sub>', expr)
+        expr = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1)/(\2)', expr)
+        expr = re.sub(r'\\frac([0-9a-zA-Z])([0-9a-zA-Z])', r'\1/\2', expr)
+        for sym, rep in SYMBOLS:
+            expr = expr.replace(sym, rep)
+        expr = expr.replace(r'\ ', ' ')
+        return f'<span class="inline-math"><em>{expr.strip()}</em></span>'
 
-        # analysisnote
-        if line.startswith(r"\begin{analysisnote}"):
-            out.append('<div class="kindle-analysis">')
-            continue
-        elif line.startswith(r"\end{analysisnote}"):
-            out.append('</div>')
-            continue
+    # 1. Proteger valores monetários antes de avaliar fórmulas matemáticas
+    currency_tokens = []
+    def save_curr(m):
+        currency_tokens.append(m.group(0))
+        return f"@@CURRENCY_{len(currency_tokens)-1}@@"
+    tex = re.sub(r'\b(?:R|US|U\$|BRL)\$\s*\d+([.,]\d+)?\b', save_curr, tex)
+    tex = re.sub(r'\$\s*\d+([.,]\d+)?\b', save_curr, tex)
 
-        # quote
-        if line.startswith(r"\begin{quote}"):
-            in_quote = True
-            out.append('<blockquote class="kindle-quote">')
-            continue
-        elif line.startswith(r"\end{quote}"):
-            in_quote = False
-            out.append('</blockquote>')
-            continue
+    # 2. Fórmulas matemáticas inline ($...$ e \(...\))
+    def repl_inline_math(m):
+        return clean_math(m.group(1))
 
-        # Listas: itemize
-        if line.startswith(r"\begin{itemize}"):
-            in_itemize = True
-            out.append('<ul class="kindle-list">')
-            continue
-        elif line.startswith(r"\end{itemize}"):
-            in_itemize = False
-            out.append('</ul>')
-            continue
+    tex = re.sub(r'(?<!\\)\$([^$\n]+?)\$', repl_inline_math, tex)
+    tex = re.sub(r'\\\((.+?)\\\)', repl_inline_math, tex)
 
-        # Listas: enumerate
-        if line.startswith(r"\begin{enumerate}"):
-            in_enumerate = True
-            out.append('<ol class="kindle-list">')
-            continue
-        elif line.startswith(r"\end{enumerate}"):
-            in_enumerate = False
-            out.append('</ol>')
-            continue
+    # Restaurar valores monetários
+    for c_idx, c_val in enumerate(currency_tokens):
+        tex = tex.replace(f"@@CURRENCY_{c_idx}@@", c_val)
 
-        # Itens de listas
-        item_m = re.match(r'\\item\s*(.*)', line)
-        if item_m:
-            item_body = clean_inline(item_m.group(1))
-            out.append(f'<li>{item_body}</li>')
-            continue
+    for sym, rep in SYMBOLS:
+        tex = tex.replace(sym, rep)
 
-        # Tabelas
-        if any(line.startswith(tb) for tb in [r"\begin{table}", r"\begin{tabularx}", r"\begin{longtable}", r"\begin{tabular}"]):
-            in_table = True
-            table_rows = []
-            continue
-        elif any(line.startswith(tb) for tb in [r"\end{table}", r"\end{tabularx}", r"\end{longtable}", r"\end{tabular}"]):
-            in_table = False
-            if table_rows:
-                out.append('<div class="table-wrapper"><table class="kindle-table">')
-                # Primeira linha como cabeçalho
-                first_row = True
-                for row in table_rows:
-                    cols = [clean_inline(c.strip()) for c in row.split("&")]
-                    if first_row:
-                        out.append('<tr>' + ''.join(f'<th>{c}</th>' for c in cols) + '</tr>')
-                        first_row = False
-                    else:
-                        out.append('<tr>' + ''.join(f'<td>{c}</td>' for c in cols) + '</tr>')
-                out.append('</table></div>')
-                table_rows = []
-            continue
+    tex = tex.replace("``", "“").replace("''", "”")
+    tex = tex.replace("---", "—").replace("--", "–")
 
-        if in_table:
-            # Captura linhas da tabela
-            clean_tbl_line = line.replace(r"\\", "").strip()
-            if "&" in clean_tbl_line:
-                table_rows.append(clean_tbl_line)
+    # Grupos tipográficos comutadores de fonte { \Huge\bfseries\sffamily ... } com suporte a chaves aninhadas
+    FONT_SWITCHES = r'\\(?:Huge|huge|LARGE|Large|large|normalsize|small|footnotesize|scriptsize|tiny|bfseries|sffamily|itshape|rmfamily|centering|raggedright|raggedleft)\b\s*'
+    font_pattern = re.compile(r'\{(\s*' + FONT_SWITCHES + r')')
+    while True:
+        m = font_pattern.search(tex)
+        if not m:
+            break
+        start_idx = m.start()
+        depth = 1
+        cur = m.start() + 1
+        while cur < len(tex) and depth > 0:
+            if tex[cur] == '{':
+                depth += 1
+            elif tex[cur] == '}':
+                depth -= 1
+            cur += 1
+        if depth == 0:
+            inner = tex[m.start() + 1:cur - 1]
+            is_bold = '\\bfseries' in inner
+            inner = re.sub(FONT_SWITCHES, '', inner).strip()
+            rep = f'<strong>{inner}</strong>' if is_bold and inner else inner
+            tex = tex[:start_idx] + rep + tex[cur:]
+        else:
+            break
+    tex = re.sub(FONT_SWITCHES, '', tex)
+
+    # Labels e referências
+    tex = re.sub(r'\\ref\{([^}]+)\}', r'\1', tex)
+    tex = re.sub(r'\\label\{[^}]*\}', '', tex)
+
+    # Formatação inline padrão
+    for _ in range(3):
+        tex = re.sub(r'\\textbf\{([^{}]+)\}', r'<strong>\1</strong>', tex)
+        tex = re.sub(r'\\(?:textit|emph)\{([^{}]+)\}', r'<em>\1</em>', tex)
+        tex = re.sub(r'\\texttt\{([^{}]+)\}', r'<code>\1</code>', tex)
+        tex = re.sub(r'\\underline\{\s*\}', r'<span class="blank">_______</span>', tex)
+        tex = re.sub(r'\\underline\{([^{}]+)\}', r'<u>\1</u>', tex)
+        tex = re.sub(r'\\textsuperscript\{([^{}]+)\}', r'<sup>\1</sup>', tex)
+
+    # 5. Sistema de Armazenamento de Blocos Isolados (evita wrappers <p> inválidos)
+    blocks_store = []
+    def store_block(html_code: str) -> str:
+        idx = len(blocks_store)
+        blocks_store.append(html_code.strip())
+        return f"\n\n@@BLOCK_{idx}@@\n\n"
+
+    # Ambientes verbatim / lstlisting
+    def repl_verbatim(m):
+        return store_block(f'<pre class="kindle-code"><code>{html.escape(m.group(1).strip())}</code></pre>')
+    tex = re.sub(r'\\begin\{(?:verbatim|lstlisting)\}(.*?)\\end\{(?:verbatim|lstlisting)\}', repl_verbatim, tex, flags=re.S)
+
+    # Titlepage
+    def repl_titlepage(m):
+        inner = m.group(1)
+        gm = re.search(r'\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}', inner)
+        img_tag = ""
+        if gm:
+            img_name = Path(gm.group(1)).name
+            img_tag = f'<div class="titlepage-cover"><img src="{image_rel_prefix}{img_name}" alt="Capa" class="kindle-img" /></div>'
+        return store_block(img_tag) if img_tag else ""
+    tex = re.sub(r'\\begin\{titlepage\}(.*?)\\end\{titlepage\}', repl_titlepage, tex, flags=re.S)
+
+    # Display math
+    def repl_disp_math(m):
+        return store_block(f'<div class="math-block"><em>{clean_math(m.group(1).strip())}</em></div>')
+    tex = re.sub(r'\\\[(.+?)\\\]', repl_disp_math, tex, flags=re.S)
+    tex = re.sub(r'\\begin\{equation\*?\}(.*?)\\end\{equation\*?\}', repl_disp_math, tex, flags=re.S)
+
+    # Figuras: \bookfigure{caminho}{legenda} com suporte a chaves aninhadas na legenda
+    for start, end, (path, caption) in reversed(extract_macro_args(tex, 'bookfigure', 2)):
+        fname = Path(path.strip()).name
+        cap = caption.strip()
+        cap = re.sub(r'(?<![R\w\\])\$([^$\n]+?)\$(?!\w)', repl_inline_math, cap)
+        for sym, rep in SYMBOLS:
+            cap = cap.replace(sym, rep)
+        fig_html = f'<figure class="kindle-figure"><img src="{image_rel_prefix}{fname}" alt="{html.escape(cap)}" class="kindle-img" /><figcaption>{cap}</figcaption></figure>'
+        token = store_block(fig_html)
+        tex = tex[:start] + token + tex[end:]
+
+    # Ambiente figure
+    def repl_fig_env(m):
+        inner = m.group(1)
+        cap_m = re.search(r'\\caption\{([^}]+)\}', inner)
+        caption = cap_m.group(1) if cap_m else ""
+        img_m = re.search(r'\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}', inner)
+        if img_m:
+            fname = Path(img_m.group(1)).name
+            return store_block(f'<figure class="kindle-figure"><img src="{image_rel_prefix}{fname}" alt="{html.escape(caption)}" class="kindle-img" /><figcaption>{caption}</figcaption></figure>')
+        return ""
+    tex = re.sub(r'\\begin\{figure\}(.*?)\\end\{figure\}', repl_fig_env, tex, flags=re.S)
+
+    # Inclusão de figuras isoladas (\includegraphics)
+    def repl_incfig(m):
+        fname = Path(m.group(1)).name
+        return store_block(f'<div class="figure-container"><img src="{image_rel_prefix}{fname}" alt="Figura" class="kindle-img" /></div>' )
+    tex = re.sub(r'\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}', repl_incfig, tex)
+
+    # 1. Ambientes tabulares internos: tabular, tabularx, longtable
+    def repl_tabular(m):
+        inner = m.group(1).strip()
+        while inner.startswith('{'):
+            d, end_b = 0, 0
+            for i, ch in enumerate(inner):
+                if ch == '{': d += 1
+                elif ch == '}':
+                    d -= 1
+                    if d == 0: end_b = i + 1; break
+            inner = inner[end_b:].strip()
+        inner = re.sub(r'\\(?:toprule|midrule|bottomrule|hline|addlinespace|small|footnotesize|centering|endfirsthead|endhead|endfoot|endlastfoot)\b', '', inner)
+        rows = [r.strip() for r in re.split(r'\\\\', inner) if r.strip()]
+        if not rows:
+            return ""
+        out_rows = ['<table class="kindle-table">']
+        for i, row in enumerate(rows):
+            cols = [c.strip() for c in row.split('&')]
+            tag = 'th' if i == 0 else 'td'
+            out_rows.append('<tr>' + ''.join(f'<{tag}>{c}</{tag}>' for c in cols) + '</tr>')
+        out_rows.append('</table>')
+        return "\n".join(out_rows)
+
+    tex = re.sub(r'\\begin\{(?:tabularx|longtable|tabular)\}(.*?)\\end\{(?:tabularx|longtable|tabular)\}', repl_tabular, tex, flags=re.S)
+
+    # 2. Wrapper externo table: \begin{table}[H] ... \end{table}
+    def repl_table_float(m):
+        inner = m.group(1).strip()
+        cap_m = re.search(r'\\caption\{([^}]+)\}', inner)
+        caption = cap_m.group(1).strip() if cap_m else ""
+        inner = re.sub(r'\\caption\{[^}]*\}', '', inner)
+        inner = re.sub(r'\\label\{[^}]*\}', '', inner)
+        cap_tag = f'<div class="table-caption">{caption}</div>\n' if caption else ""
+        return store_block(f'<div class="table-wrapper">\n{inner.strip()}\n{cap_tag}</div>')
+
+    tex = re.sub(r'\\begin\{table\}(?:\[[^\]]*\])?(.*?)\\end\{table\}', repl_table_float, tex, flags=re.S)
+
+    # Listas aninhadas: processadas do nível mais interno para o mais externo
+    pattern_list = re.compile(r'\\begin\{(itemize|enumerate)\}(?:\[[^\]]*\])?')
+    while True:
+        begins = list(pattern_list.finditer(tex))
+        if not begins:
+            break
+        found = False
+        for b_m in reversed(begins):
+            tag_type = b_m.group(1)
+            end_tag = f'\\end{{{tag_type}}}'
+            end_pos = tex.find(end_tag, b_m.end())
+            if end_pos == -1:
+                continue
+            intermediate = pattern_list.search(tex, b_m.end())
+            if intermediate and intermediate.start() < end_pos:
+                continue
+            inner = tex[b_m.end():end_pos].strip()
+            raw_items = [it.strip() for it in re.split(r'\\item\b', inner) if it.strip()]
+            html_tag = "ol" if tag_type == "enumerate" else "ul"
+            lis = []
+            for it in raw_items:
+                paras = [p.strip() for p in re.split(r'\n\s*\n|\\par\b', it) if p.strip()]
+                if len(paras) <= 1:
+                    item_content = paras[0] if paras else ""
+                else:
+                    item_content = "".join(f'<p>{p}</p>' if not p.startswith('@@BLOCK_') else p for p in paras)
+                lis.append(f'<li>{item_content}</li>')
+            list_html = f'<{html_tag} class="kindle-list">\n' + "\n".join(lis) + f'\n</{html_tag}>'
+            placeholder = store_block(list_html)
+            tex = tex[:b_m.start()] + placeholder + tex[end_pos + len(end_tag):]
+            found = True
+            break
+        if not found:
+            break
+
+    # Descrições: \begin{description} \item[...] ... \end{description}
+    def repl_desc_env(m):
+        inner = m.group(1).strip()
+        items = re.split(r'\\item\s*\[(.*?)\]', inner)
+        out_dl = ['<dl class="kindle-description">']
+        for k in range(1, len(items), 2):
+            term = items[k].strip()
+            defn = items[k + 1].strip() if k + 1 < len(items) else ""
+            out_dl.append(f'<dt><strong>{term}</strong></dt>\n<dd>{defn}</dd>')
+        out_dl.append('</dl>')
+        return store_block("\n".join(out_dl))
+    tex = re.sub(r'\\begin\{description\}(.*?)\\end\{description\}', repl_desc_env, tex, flags=re.S)
+
+    # Ambientes pedagógicos e caixas de destaque
+    def repl_learningoutcomes(m):
+        return store_block(f'<aside class="kindle-box outcomes-box"><h4 class="box-title">Objetivos de Aprendizagem</h4>\n{m.group(1).strip()}\n</aside>')
+    tex = re.sub(r'\\begin\{learningoutcomes\}(.*?)\\end\{learningoutcomes\}', repl_learningoutcomes, tex, flags=re.S)
+
+    def repl_featurebox(m):
+        title = m.group(1).strip()
+        body = m.group(2).strip()
+        return store_block(f'<aside class="kindle-box feature-box"><h4 class="box-title">{title}</h4>\n{body}\n</aside>')
+    tex = re.sub(r'\\begin\{featurebox\}\{([^}]+)\}(.*?)\\end\{featurebox\}', repl_featurebox, tex, flags=re.S)
+
+    tex = re.sub(r'\\begin\{sampletext\}(.*?)\\end\{sampletext\}', lambda m: store_block(f'<div class="kindle-sample">{m.group(1).strip()}</div>'), tex, flags=re.S)
+    tex = re.sub(r'\\begin\{analysisnote\}(.*?)\\end\{analysisnote\}', lambda m: store_block(f'<div class="kindle-analysis">{m.group(1).strip()}</div>'), tex, flags=re.S)
+    tex = re.sub(r'\\begin\{quote\}(.*?)\\end\{quote\}', lambda m: store_block(f'<blockquote class="kindle-quote">{m.group(1).strip()}</blockquote>'), tex, flags=re.S)
+
+    BOX_NAMES = [('keyconcept', 'Conceito-Chave'), ('warningbox', 'Atenção'), ('examplebox', 'Exemplo'), ('notebox', 'Nota')]
+    for b_env, b_def_title in BOX_NAMES:
+        def make_repl(title_default):
+            def _repl(m):
+                opt_title = m.group(1) or title_default
+                body = m.group(2).strip()
+                return store_block(f'<aside class="kindle-box"><h4 class="box-title">{opt_title}</h4>\n{body}\n</aside>')
+            return _repl
+        tex = re.sub(rf'\\begin\{{{b_env}\}}(?:\[([^\]]+)\])?(.*?)\\end\{{{b_env}\}}', make_repl(b_def_title), tex, flags=re.S)
+
+    # Títulos e divisões
+    def repl_part(m):
+        title = m.group(1).strip()
+        toc_entries.append(("part", title))
+        return store_block(f'<h1 class="part-title">{title}</h1>')
+    tex = re.sub(r'\\part\*?\{([^}]+)\}', repl_part, tex)
+
+    def repl_h1(m):
+        title = m.group(1).strip()
+        toc_entries.append(("chapter", title))
+        return store_block(f'<h1 class="chapter-title">{title}</h1>')
+    tex = re.sub(r'\\chapter\*?\{([^}]+)\}', repl_h1, tex)
+
+    def repl_h2(m):
+        title = m.group(1).strip()
+        toc_entries.append(("section", title))
+        return store_block(f'<h2 class="section-title">{title}</h2>')
+    tex = re.sub(r'\\section\*?\{([^}]+)\}', repl_h2, tex)
+
+    def repl_h3(m):
+        title = m.group(1).strip()
+        toc_entries.append(("subsection", title))
+        return store_block(f'<h3 class="subsection-title">{title}</h3>')
+    tex = re.sub(r'\\subsection\*?\{([^}]+)\}', repl_h3, tex)
+
+    def repl_h4(m):
+        title = m.group(1).strip()
+        return store_block(f'<h4 class="subsubsection-title">{title}</h4>')
+    tex = re.sub(r'\\(?:subsubsection|paragraph)\*?\{([^}]+)\}', repl_h4, tex)
+
+    # Wrappers de alinhamento
+    def repl_center(m):
+        return store_block(f'<div class="kindle-center">\n{m.group(1).strip()}\n</div>')
+    tex = re.sub(r'\\begin\{(?:center|flushleft|flushright)\}(.*?)\\end\{(?:center|flushleft|flushright)\}', repl_center, tex, flags=re.S)
+
+    # Parágrafos normais
+    blocks = re.split(r'\n\s*\n|\\par\b', tex)
+    out_blocks = []
+    for b in blocks:
+        b = b.strip()
+        if not b:
             continue
+        if re.match(r'^@@BLOCK_\d+@@$', b):
+            out_blocks.append(b)
+        else:
+            b = re.sub(r'\\\\', '<br/>', b)
+            if b.startswith('{') and b.endswith('}'):
+                b = b[1:-1].strip()
+            out_blocks.append(f'<p>{b}</p>')
 
-        # Parágrafo normal
-        cleaned = clean_inline(line)
-        if cleaned:
-            out.append(f'<p>{cleaned}</p>')
+    full_html = "\n\n".join(out_blocks)
 
-    return "\n".join(out), toc_entries
+    # Restaurar blocos hierarquicamente
+    while '@@BLOCK_' in full_html:
+        for idx in range(len(blocks_store) - 1, -1, -1):
+            full_html = full_html.replace(f'@@BLOCK_{idx}@@', blocks_store[idx])
+
+    # Limpeza final de tags vazias e chaves TeX residuais
+    full_html = re.sub(r'<p>\s*</p>', '', full_html)
+    full_html = re.sub(r'\{([a-zA-Z0-9\s.,;:()—–"\'áéíóúâêîôûãõçÁÉÍÓÚÂÊÎÔÛÃÕÇ-]+)\}', r'\1', full_html)
+    full_html = full_html.replace('@@LBRACE@@', '{').replace('@@RBRACE@@', '}')
+
+    return full_html, toc_entries
 
 
 KINDLE_CSS = """/* Kindle & E-Reader Optimized Stylesheet */
@@ -270,7 +468,8 @@ body {
     line-height: 1.45;
     text-align: justify;
     color: #111111;
-    font-size: 1em;
+    font-size: 1.05em;
+    font-family: "Bookerly", "Georgia", "Palatino", serif;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -280,6 +479,16 @@ h1, h2, h3, h4, h5, h6 {
     page-break-after: avoid;
     break-after: avoid;
     color: #000000;
+}
+
+h1.part-title {
+    font-size: 1.7em;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 2.2em;
+    margin-bottom: 1.2em;
+    page-break-before: always;
+    break-before: page;
 }
 
 h1.chapter-title {
@@ -310,6 +519,10 @@ h4.subsubsection-title {
 
 p {
     margin: 0.5em 0;
+    text-indent: 1.2em;
+}
+
+h1 + p, h2 + p, h3 + p, h4 + p, .titlepage-cover + p {
     text-indent: 0;
 }
 
@@ -360,6 +573,12 @@ div.kindle-analysis {
     font-size: 0.95em;
 }
 
+div.kindle-center {
+    text-align: center;
+    margin: 1em 0;
+}
+
+/* Listas */
 ul.kindle-list, ol.kindle-list {
     margin: 0.6em 0 0.8em 1.5em;
     padding-left: 0;
@@ -369,8 +588,22 @@ li {
     margin-bottom: 0.35em;
 }
 
-/* Imagens responsivas sem distorção no Kindle */
-figure.kindle-figure, div.figure-container {
+dl.kindle-description {
+    margin: 1em 0;
+}
+
+dl.kindle-description dt {
+    font-weight: bold;
+    margin-top: 0.8em;
+}
+
+dl.kindle-description dd {
+    margin-left: 1.2em;
+    margin-bottom: 0.6em;
+}
+
+/* Imagens */
+figure.kindle-figure, div.figure-container, div.titlepage-cover {
     margin: 1.4em 0;
     text-align: center;
     page-break-inside: avoid;
@@ -384,14 +617,15 @@ img.kindle-img {
     margin: 0 auto;
 }
 
-figcaption {
+figcaption, div.table-caption {
     font-size: 0.85em;
     margin-top: 0.4em;
     color: #333333;
     font-family: sans-serif;
+    text-align: center;
 }
 
-/* Tabelas adaptadas para leitura no Kindle */
+/* Tabelas */
 div.table-wrapper {
     width: 100%;
     overflow-x: auto;
@@ -416,22 +650,54 @@ table.kindle-table th {
     color: #000000;
 }
 
-code, pre {
-    font-family: monospace;
-    font-size: 0.9em;
-    background-color: #f2f2f2;
+/* Matemática */
+span.inline-math {
+    font-family: "Cambria Math", "Latin Modern Math", serif;
 }
 
-pre {
-    padding: 0.6em;
+div.math-block {
+    margin: 1em 0;
+    text-align: center;
+    font-family: "Cambria Math", "Latin Modern Math", serif;
+    font-size: 1.1em;
+}
+
+span.blank {
+    letter-spacing: 0.1em;
+}
+
+/* Código */
+code {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 0.9em;
+    background-color: #f2f2f2;
+    padding: 1px 3px;
+    border-radius: 2px;
+}
+
+pre.kindle-code {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 0.85em;
+    line-height: 1.35;
+    background-color: #f2f2f2;
+    padding: 0.8em 1em;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
     overflow-x: auto;
     white-space: pre-wrap;
-    word-break: break-word;
+    word-wrap: break-word;
+    margin: 1.2em 0;
+}
+
+pre.kindle-code code {
+    background-color: transparent;
+    padding: 0;
 }
 """
 
 
 def build_epub_for_book(book_dir_or_slug, output_epub: Path = None, root_dir: Path = Path(".")) -> Path:
+    """Gera edição EPUB 3 otimizada para Amazon Kindle a partir de fontes LaTeX."""
     target_path = Path(book_dir_or_slug)
     if target_path.exists() and target_path.is_dir():
         work_dir = target_path.resolve()
@@ -441,46 +707,45 @@ def build_epub_for_book(book_dir_or_slug, output_epub: Path = None, root_dir: Pa
         work_dir = root_dir / "work" / book_slug
         if not work_dir.exists():
             work_dir = root_dir / "library" / book_slug
-            
+
     manifest_file = work_dir / "state" / "manifest.json"
     if not manifest_file.exists():
         manifest_file = work_dir / "manifest.json"
     if not manifest_file.exists():
         raise FileNotFoundError(f"Manifest não encontrado em {manifest_file}")
-        
+
     manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
-    
-    title = manifest.get("bookTitleTranslated", manifest.get("bookTitleOriginal", book_slug))
+
+    title = manifest.get("bookTitleTranslated", manifest.get("bookTitleOriginal", manifest.get("title", book_slug)))
     author = manifest.get("author", "Autor Desconhecido")
     book_id = f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_DNS, book_slug)}"
-    
-    # Criar pasta temporária de montagem do EPUB
+
+    # Pasta de staging
     epub_staging = work_dir / "_epub_staging"
     if epub_staging.exists():
         shutil.rmtree(epub_staging)
-        
+
     meta_inf = epub_staging / "META-INF"
     oebps = epub_staging / "OEBPS"
     oebps_images = oebps / "assets" / "images"
     oebps_images.mkdir(parents=True, exist_ok=True)
     meta_inf.mkdir(parents=True, exist_ok=True)
-    
-    # 1. mimetype (SEM quebra de linha)
+
+    # 1. mimetype
     (epub_staging / "mimetype").write_text("application/epub+zip", encoding="ascii")
-    
+
     # 2. container.xml
-    container_xml = """<?xml version="1.0" encoding="UTF-8"?>
+    (meta_inf / "container.xml").write_text("""<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
     <rootfiles>
         <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
     </rootfiles>
-</container>"""
-    (meta_inf / "container.xml").write_text(container_xml, encoding="utf-8")
-    
-    # 3. Copiar stylesheet Kindle
+</container>""", encoding="utf-8")
+
+    # 3. CSS Kindle
     (oebps / "kindle.css").write_text(KINDLE_CSS, encoding="utf-8")
-    
-    # 4. Copiar todas as imagens existentes
+
+    # 4. Copiar imagens existentes
     assets_src = work_dir / "assets" / "images"
     if not assets_src.exists():
         assets_src = work_dir / "assets"
@@ -489,7 +754,7 @@ def build_epub_for_book(book_dir_or_slug, output_epub: Path = None, root_dir: Pa
 
     image_manifest_entries = []
     cover_image_id = None
-    
+
     if assets_src.exists():
         for img_file in assets_src.rglob("*"):
             if img_file.is_file() and img_file.suffix.lower() in [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"]:
@@ -499,19 +764,20 @@ def build_epub_for_book(book_dir_or_slug, output_epub: Path = None, root_dir: Pa
                 if img_file.suffix.lower() == ".svg":
                     mtype = "image/svg+xml"
                 img_id = f"img_{re.sub(r'[^a-zA-Z0-9_]', '_', img_file.stem)}"
-                is_cover = "cover" in img_file.name.lower()
+                is_cover = "cover" in img_file.name.lower() or "capa" in img_file.name.lower()
                 if is_cover and not cover_image_id:
                     cover_image_id = img_id
                     image_manifest_entries.append(f'<item id="{img_id}" href="assets/images/{img_file.name}" media-type="{mtype}" properties="cover-image"/>')
                 else:
                     image_manifest_entries.append(f'<item id="{img_id}" href="assets/images/{img_file.name}" media-type="{mtype}"/>')
-                    
+
     # 5. Processar capítulos e gerar XHTML
     spine_items = []
     manifest_items = []
     nav_toc_items = []
     ncx_navpoints = []
-    
+    xhtml_docs: Dict[str, str] = {}
+
     chapters_dir = work_dir / "source" / "chapters"
     if not chapters_dir.exists():
         chapters_dir = work_dir / "chapters"
@@ -531,42 +797,40 @@ def build_epub_for_book(book_dir_or_slug, output_epub: Path = None, root_dir: Pa
             item["_resolved_path"] = found_p
             chapters.append(item)
 
+    if not chapters and chapters_dir.exists():
+        for p in sorted(chapters_dir.glob("*.tex")):
+            chapters.append({"id": p.stem, "titleTranslated": p.stem.replace("-", " ").title(), "_resolved_path": p})
+
     play_order = 1
-    
+
     for idx, chap in enumerate(chapters):
         chap_id = chap.get("id", f"chap_{idx:02d}")
         chap_tex_path = chap.get("_resolved_path")
-        
+
         if not chap_tex_path.exists():
             print(f"Aviso: arquivo {chap_tex_path} não encontrado, pulando...")
             continue
-            
+
         tex_text = chap_tex_path.read_text(encoding="utf-8")
         html_body, toc_entries = latex_to_html_body(tex_text, image_rel_prefix="assets/images/")
-        
+
         doc_title = chap.get("titleTranslated", chap.get("titleOriginal", f"Capítulo {idx+1}"))
         xhtml_filename = f"{chap_id}.xhtml"
-        
-        xhtml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="pt-BR" lang="pt-BR">
-<head>
-    <meta charset="utf-8" />
-    <title>{html.escape(doc_title)}</title>
-    <link rel="stylesheet" type="text/css" href="kindle.css" />
-</head>
-<body epub:type="bodymatter">
-    <section class="chapter-content">
-        {html_body}
-    </section>
-</body>
-</html>"""
-        (oebps / xhtml_filename).write_text(xhtml_content, encoding="utf-8")
-        
+
+        body_xhtml = html_to_xhtml_fragment(html_body)
+        doc = xhtml_document(
+            title=doc_title,
+            body=f'<section class="chapter-content">\n{body_xhtml}\n</section>',
+            css_href="kindle.css",
+            body_attrs='epub:type="bodymatter"'
+        )
+        (oebps / xhtml_filename).write_text(doc, encoding="utf-8")
+        xhtml_docs[xhtml_filename] = doc
+
         item_id = f"chap_{idx:02d}"
         manifest_items.append(f'<item id="{item_id}" href="{xhtml_filename}" media-type="application/xhtml+xml"/>')
         spine_items.append(f'<itemref idref="{item_id}"/>')
-        
+
         # TOC entries
         nav_toc_items.append(f'<li><a href="{xhtml_filename}">{html.escape(doc_title)}</a></li>')
         ncx_navpoints.append(f"""    <navPoint id="np_{play_order}" playOrder="{play_order}">
@@ -576,24 +840,18 @@ def build_epub_for_book(book_dir_or_slug, output_epub: Path = None, root_dir: Pa
         play_order += 1
 
     # 6. nav.xhtml (EPUB 3 Navigation Document)
-    nav_xhtml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="pt-BR" lang="pt-BR">
-<head>
-    <meta charset="utf-8" />
-    <title>Sumário</title>
-    <link rel="stylesheet" type="text/css" href="kindle.css" />
-</head>
-<body>
-    <nav epub:type="toc" id="toc">
+    nav_xhtml = xhtml_document(
+        title="Sumário",
+        body=f"""    <nav epub:type="toc" id="toc">
         <h1>Sumário</h1>
         <ol>
             {"".join(nav_toc_items)}
         </ol>
-    </nav>
-</body>
-</html>"""
+    </nav>""",
+        css_href="kindle.css"
+    )
     (oebps / "nav.xhtml").write_text(nav_xhtml, encoding="utf-8")
+    xhtml_docs["nav.xhtml"] = nav_xhtml
     manifest_items.append('<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>')
 
     # 7. toc.ncx (EPUB 2 / Kindle Backward Compatibility)
@@ -615,11 +873,19 @@ def build_epub_for_book(book_dir_or_slug, output_epub: Path = None, root_dir: Pa
     manifest_items.append('<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>')
     manifest_items.append('<item id="css" href="kindle.css" media-type="text/css"/>')
 
+    # Validação XML e verificação de vazamento
+    errors = [err for err in (validate_xhtml(c, n) for n, c in xhtml_docs.items()) if err]
+    if errors:
+        shutil.rmtree(epub_staging, ignore_errors=True)
+        raise RuntimeError("XHTML inválido gerado para o EPUB:\n  " + "\n  ".join(errors[:10]))
+    report_leaks(xhtml_docs, tag="LATEX-EPUB")
+
     # 8. content.opf
     cover_meta = f'<meta name="cover" content="{cover_image_id}"/>' if cover_image_id else ""
     manifest_str = "\n        ".join(manifest_items + image_manifest_entries)
     spine_str = "\n        ".join(spine_items)
-    
+
+    modified = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     content_opf = f"""<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="3.0" xml:lang="pt-BR">
     <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
@@ -627,7 +893,7 @@ def build_epub_for_book(book_dir_or_slug, output_epub: Path = None, root_dir: Pa
         <dc:title>{html.escape(title)}</dc:title>
         <dc:creator>{html.escape(author)}</dc:creator>
         <dc:language>pt-BR</dc:language>
-        <meta property="dcterms:modified">2026-10-30T18:00:00Z</meta>
+        <meta property="dcterms:modified">{modified}</meta>
         {cover_meta}
     </metadata>
     <manifest>
@@ -639,7 +905,7 @@ def build_epub_for_book(book_dir_or_slug, output_epub: Path = None, root_dir: Pa
 </package>"""
     (oebps / "content.opf").write_text(content_opf, encoding="utf-8")
 
-    # 9. Compactar para arquivo .epub (o mimetype DEVE ser armazenado sem compressão no início)
+    # 9. Compactar para arquivo .epub
     if output_epub:
         final_epub = Path(output_epub)
         final_epub.parent.mkdir(parents=True, exist_ok=True)
@@ -647,27 +913,12 @@ def build_epub_for_book(book_dir_or_slug, output_epub: Path = None, root_dir: Pa
         output_dir = work_dir / "dist"
         output_dir.mkdir(parents=True, exist_ok=True)
         final_epub = output_dir / f"{book_slug}-kindle.epub"
-        
-    if final_epub.exists():
-        final_epub.unlink()
 
-    with zipfile.ZipFile(final_epub, "w") as zf:
-        # Primeiro o mimetype sem compressão
-        zf.writestr("mimetype", "application/epub+zip", compress_type=zipfile.ZIP_STORED)
-        
-        # Em seguida os demais arquivos com ZIP_DEFLATED
-        for root, _, files in os.walk(epub_staging):
-            for file in files:
-                full_path = Path(root) / file
-                rel_path = full_path.relative_to(epub_staging)
-                if rel_path.as_posix() == "mimetype":
-                    continue
-                zf.write(full_path, rel_path.as_posix(), compress_type=zipfile.ZIP_DEFLATED)
-                
-    # Limpar staging
+    write_epub_zip(epub_staging, final_epub)
     shutil.rmtree(epub_staging)
-    
-    print(f"EPUB Kindle gerado com sucesso: {final_epub} ({final_epub.stat().st_size} bytes)")
+
+    sz_mb = final_epub.stat().st_size / (1024 * 1024)
+    print(f"EPUB Kindle gerado com sucesso: {final_epub.name} ({sz_mb:.2f} MB, {len(chapters)} capítulos)")
     return final_epub
 
 if __name__ == "__main__":
